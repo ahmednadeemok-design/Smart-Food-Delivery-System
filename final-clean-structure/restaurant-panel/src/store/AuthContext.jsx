@@ -1,22 +1,43 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getProfile, loginRestaurantUser, registerRestaurantUser } from "../services/authService.js";
 
 const AuthContext = createContext(null);
+const tokenKey = "restaurant_token";
+const userKey = "restaurant_user";
+const expectedRole = "restaurant";
+
+const readSavedUser = () => {
+  try {
+    const saved = localStorage.getItem(userKey);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    localStorage.removeItem(userKey);
+    return null;
+  }
+};
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem("restaurant_token"));
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("restaurant_user");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [token, setToken] = useState(() => localStorage.getItem(tokenKey));
+  const [user, setUser] = useState(readSavedUser);
   const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
-  const saveSession = (payload) => {
-    localStorage.setItem("restaurant_token", payload.token);
-    localStorage.setItem("restaurant_user", JSON.stringify(payload.user));
+  const logout = useCallback(() => {
+    localStorage.removeItem(tokenKey);
+    localStorage.removeItem(userKey);
+    setToken(null);
+    setUser(null);
+  }, []);
+
+  const saveSession = useCallback((payload) => {
+    if (!payload?.token || !payload?.user) throw new Error("Invalid authentication response");
+    if (payload.user.role !== expectedRole) throw new Error("Please use the correct portal for this account role");
+
+    localStorage.setItem(tokenKey, payload.token);
+    localStorage.setItem(userKey, JSON.stringify(payload.user));
     setToken(payload.token);
     setUser(payload.user);
-  };
+  }, []);
 
   const login = async (form) => {
     setLoading(true);
@@ -40,25 +61,29 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("restaurant_token");
-    localStorage.removeItem("restaurant_user");
-    setToken(null);
-    setUser(null);
-  };
-
-  const refreshProfile = async () => {
-    if (!token) return;
+  const refreshProfile = useCallback(async () => {
+    if (!localStorage.getItem(tokenKey)) return;
     const res = await getProfile();
-    setUser(res.data.data);
-    localStorage.setItem("restaurant_user", JSON.stringify(res.data.data));
-  };
+    const profile = res.data.data;
+    if (profile.role !== expectedRole) throw new Error("Invalid role for this portal");
+    setUser(profile);
+    localStorage.setItem(userKey, JSON.stringify(profile));
+  }, []);
 
-  useEffect(() => { if (token) refreshProfile().catch(() => logout()); }, []);
+  useEffect(() => {
+    refreshProfile()
+      .catch(logout)
+      .finally(() => setSessionReady(true));
+  }, [logout, refreshProfile]);
+
+  useEffect(() => {
+    window.addEventListener("auth:logout", logout);
+    return () => window.removeEventListener("auth:logout", logout);
+  }, [logout]);
 
   const value = useMemo(
-    () => ({ token, user, loading, login, register, logout, isAuthenticated: Boolean(token) }),
-    [token, user, loading]
+    () => ({ token, user, loading, sessionReady, login, register, logout, isAuthenticated: Boolean(token && user?.role === expectedRole) }),
+    [token, user, loading, sessionReady, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

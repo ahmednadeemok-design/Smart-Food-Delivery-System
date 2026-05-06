@@ -13,6 +13,10 @@ exports.protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: "Not authorized, no token provided" });
     }
 
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ success: false, message: "JWT_SECRET is missing in server environment" });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id).select("-password");
 

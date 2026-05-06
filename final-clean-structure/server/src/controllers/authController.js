@@ -1,9 +1,30 @@
 const User = require("../models/User");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 
+const publicUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+  avatar: user.avatar,
+  trustScore: user.trustScore,
+  subscription: user.subscription,
+});
+
+const handleAuthError = (res, error) => {
+  const statusCode = error.name === "ValidationError" || error.code === 11000 ? 400 : 500;
+  const message = error.code === 11000 ? "User already exists" : error.message;
+  return errorResponse(res, message, statusCode);
+};
+
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, password, phone, role } = req.body;
+
+    if (!name || !email || !password || !phone) {
+      return errorResponse(res, "Name, email, phone, and password are required", 400);
+    }
 
     const userExists = await User.findOne({ email });
     if (userExists) return errorResponse(res, "User already exists", 400);
@@ -13,10 +34,10 @@ exports.registerUser = async (req, res) => {
 
     return successResponse(res, "User registered successfully", {
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: publicUser(user),
     }, 201);
   } catch (error) {
-    return errorResponse(res, error.message, 500);
+    return handleAuthError(res, error);
   }
 };
 
@@ -36,13 +57,13 @@ exports.loginUser = async (req, res) => {
 
     return successResponse(res, "Login successful", {
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: publicUser(user),
     });
   } catch (error) {
-    return errorResponse(res, error.message, 500);
+    return handleAuthError(res, error);
   }
 };
 
 exports.getProfile = async (req, res) => {
-  return successResponse(res, "Profile fetched successfully", req.user);
+  return successResponse(res, "Profile fetched successfully", publicUser(req.user));
 };

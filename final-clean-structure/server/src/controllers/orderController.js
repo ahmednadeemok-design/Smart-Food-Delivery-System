@@ -1,5 +1,7 @@
 const Order = require("../models/Order");
 const FoodItem = require("../models/FoodItem");
+const Restaurant = require("../models/Restaurant");
+const Rider = require("../models/Rider");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { createDeliveryOTP, verifyOTP } = require("../services/otpService");
 const { assignBestRider } = require("../services/riderAssignmentService");
@@ -8,6 +10,10 @@ const { getDeliveryCostBreakdown } = require("../services/deliveryCostService");
 exports.createOrder = async (req, res) => {
   try {
     const { restaurant, items, deliveryAddress, deliveryLocation, paymentMethod, emergencyMode } = req.body;
+
+    if (!restaurant || !Array.isArray(items) || items.length === 0 || !deliveryAddress) {
+      return errorResponse(res, "Restaurant, items, and delivery address are required", 400);
+    }
 
     const foodIds = items.map((i) => i.foodItem);
     const foodItems = await FoodItem.find({ _id: { $in: foodIds } });
@@ -52,7 +58,19 @@ exports.createOrder = async (req, res) => {
 };
 
 exports.getMyOrders = async (req, res) => {
-  const orders = await Order.find({ customer: req.user._id }).populate("restaurant rider").sort("-createdAt");
+  let query = { customer: req.user._id };
+
+  if (req.user.role === "rider") {
+    const rider = await Rider.findOne({ user: req.user._id });
+    query = rider ? { rider: rider._id } : { _id: null };
+  }
+
+  if (req.user.role === "restaurant") {
+    const restaurants = await Restaurant.find({ owner: req.user._id }).select("_id");
+    query = restaurants.length ? { restaurant: { $in: restaurants.map((restaurant) => restaurant._id) } } : { _id: null };
+  }
+
+  const orders = await Order.find(query).populate("restaurant rider").sort("-createdAt");
   return successResponse(res, "Orders fetched successfully", orders);
 };
 

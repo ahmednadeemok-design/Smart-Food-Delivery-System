@@ -14,9 +14,8 @@ exports.updateLocation = async (req, res) => {
   const rider = await Rider.findOneAndUpdate(
     { user: req.user._id },
     { currentLocation: req.body.currentLocation, isOnline: true },
-    { new: true }
+    { new: true, upsert: true, setDefaultsOnInsert: true }
   );
-  if (!rider) return errorResponse(res, "Rider profile not found", 404);
   return successResponse(res, "Rider location updated", rider);
 };
 
