@@ -8,6 +8,8 @@ const paymentSchema = new mongoose.Schema(
     method: { type: String, enum: ["cod", "card", "wallet"], default: "cod" },
     status: { type: String, enum: ["pending", "paid", "failed", "refunded"], default: "pending" },
     transactionId: String,
+    refundReason: String,
+    refundedAt: Date,
   },
   { timestamps: true }
 );

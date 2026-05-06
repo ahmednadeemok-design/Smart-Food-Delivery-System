@@ -10,6 +10,7 @@ const publicUser = (user) => ({
   avatar: user.avatar,
   trustScore: user.trustScore,
   subscription: user.subscription,
+  isBlocked: user.isBlocked,
 });
 
 const handleAuthError = (res, error) => {
@@ -20,7 +21,8 @@ const handleAuthError = (res, error) => {
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, password, phone, role } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     if (!name || !email || !password || !phone) {
       return errorResponse(res, "Name, email, phone, and password are required", 400);
@@ -43,12 +45,14 @@ exports.registerUser = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     if (!email || !password) return errorResponse(res, "Please provide email and password", 400);
 
     const user = await User.findOne({ email }).select("+password");
     if (!user) return errorResponse(res, "Invalid credentials", 401);
+    if (user.isBlocked) return errorResponse(res, user.blockReason || "User account is blocked", 403);
 
     const isMatch = await user.matchPassword(password);
     if (!isMatch) return errorResponse(res, "Invalid credentials", 401);

@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-export default function MenuForm({ onSubmit }) {
+export default function MenuForm({ onSubmit, restaurants = [] }) {
   const [form, setForm] = useState({
-    restaurantId: "",
+    restaurantId: restaurants[0]?._id || "",
     name: "",
     description: "",
     price: "",
@@ -31,7 +31,15 @@ export default function MenuForm({ onSubmit }) {
   return (
     <form className="card form" onSubmit={submit}>
       <h3>Add Food Item</h3>
-      <input className="input" placeholder="Restaurant ID" value={form.restaurantId} onChange={(e) => update("restaurantId", e.target.value)} />
+      {restaurants.length ? (
+        <select value={form.restaurantId || restaurants[0]._id} onChange={(e) => update("restaurantId", e.target.value)}>
+          {restaurants.map((restaurant) => (
+            <option key={restaurant._id} value={restaurant._id}>{restaurant.name}</option>
+          ))}
+        </select>
+      ) : (
+        <input className="input" placeholder="Restaurant ID" value={form.restaurantId} onChange={(e) => update("restaurantId", e.target.value)} />
+      )}
       <input className="input" placeholder="Food Name" value={form.name} onChange={(e) => update("name", e.target.value)} />
       <textarea rows="3" placeholder="Description" value={form.description} onChange={(e) => update("description", e.target.value)} />
       <input className="input" type="number" placeholder="Price" value={form.price} onChange={(e) => update("price", e.target.value)} />

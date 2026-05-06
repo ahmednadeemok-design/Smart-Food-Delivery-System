@@ -11,9 +11,10 @@ export const saveCart = (cart) => {
 
 export const addToCart = (item) => {
   const cart = getCart();
+  const quantity = Math.max(1, Number(item.quantity) || 1);
   const existing = cart.find((x) => x._id === item._id);
-  if (existing) existing.quantity += 1;
-  else cart.push({ ...item, quantity: 1 });
+  if (existing) existing.quantity += quantity;
+  else cart.push({ ...item, quantity });
   saveCart(cart);
   return cart;
 };
@@ -24,10 +25,20 @@ export const removeFromCart = (id) => {
   return cart;
 };
 
+export const updateCartQuantity = (id, quantity) => {
+  const nextQuantity = Math.max(1, Number(quantity) || 1);
+  const cart = getCart().map((item) => item._id === id ? { ...item, quantity: nextQuantity } : item);
+  saveCart(cart);
+  return cart;
+};
+
 export const clearCart = () => saveCart([]);
 
 export const cartTotals = (cart) => {
   const subtotal = cart.reduce((sum, item) => sum + Number(item.price || 0) * item.quantity, 0);
   const calories = cart.reduce((sum, item) => sum + Number(item.calories || 0) * item.quantity, 0);
-  return { subtotal, calories };
+  const deliveryFee = cart.length ? 125 : 0;
+  const platformFee = cart.length ? Math.max(25, Math.round(subtotal * 0.03)) : 0;
+  const serviceFee = cart.length ? 15 : 0;
+  return { subtotal, calories, deliveryFee, platformFee, serviceFee, total: subtotal + deliveryFee + platformFee + serviceFee };
 };

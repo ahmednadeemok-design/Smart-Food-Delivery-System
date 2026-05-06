@@ -9,6 +9,7 @@ import RestaurantList from "./pages/RestaurantList.jsx";
 import RestaurantDetails from "./pages/RestaurantDetails.jsx";
 import Cart from "./pages/Cart.jsx";
 import Checkout from "./pages/Checkout.jsx";
+import OrderConfirmation from "./pages/OrderConfirmation.jsx";
 import OrderTracking from "./pages/OrderTracking.jsx";
 import Complaint from "./pages/Complaint.jsx";
 import Subscription from "./pages/Subscription.jsx";
@@ -29,6 +30,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/order-confirmation" element={<OrderConfirmation />} />
           <Route path="/orders" element={<OrderTracking />} />
           <Route path="/complaint" element={<Complaint />} />
           <Route path="/subscription" element={<Subscription />} />

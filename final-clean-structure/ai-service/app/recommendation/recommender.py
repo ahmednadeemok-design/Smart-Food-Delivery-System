@@ -1,5 +1,7 @@
+from app.recommendation.narowal_sample_data import NAROWAL_SAMPLE_FOOD_ITEMS
+
 def recommend_food(payload: dict):
-    food_items = payload.get("food_items", [])
+    food_items = payload.get("food_items", []) or NAROWAL_SAMPLE_FOOD_ITEMS
     past_orders = [x.lower() for x in payload.get("past_orders", [])]
     user_goal = (payload.get("user_goal") or "").lower()
     time_of_day = (payload.get("time_of_day") or "").lower()

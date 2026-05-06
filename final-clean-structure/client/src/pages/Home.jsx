@@ -6,11 +6,11 @@ export default function Home() {
     <>
       <section className="hero">
         <div className="container">
-          <span className="badge">FYP-level intelligent food delivery</span>
-          <h1>Smart Food Delivery with AI, OTP verification, and trust scoring.</h1>
+          <span className="badge">Narowal city food delivery</span>
+          <h1>SmartFood Narowal</h1>
           <p>
-            A Foodpanda-style system with advanced missing features: AI recommendations, kitchen load, complaint resolver,
-            freshness score, health tracking, transparent delivery cost, and delivery OTP.
+            Order from Palmer Restaurant, Buddy's Narowal, City Restaurant, Anbala Sweets, ZFC, Virsa, and other local
+            Narowal spots with COD, transparent fees, OTP delivery verification, and AI-backed recommendations.
           </p>
           <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
             <Link className="btn" to="/restaurants">Explore Restaurants</Link>
@@ -22,16 +22,16 @@ export default function Home() {
       <section className="page">
         <div className="container grid grid-3">
           <div className="card">
-            <h3>AI Recommendation</h3>
-            <p className="muted">Suggest food based on past orders, time, location, and health goal.</p>
+            <h3>Narowal Zones</h3>
+            <p className="muted">UET Campus, Main Bazaar, Circular Road, Railway Road, DHQ area, and Shakargarh Road coverage.</p>
           </div>
           <div className="card">
-            <h3>Delivery OTP</h3>
-            <p className="muted">Reduce fake delivery disputes using customer verification.</p>
+            <h3>COD + OTP</h3>
+            <p className="muted">Cash on delivery stays simple, while OTP confirmation protects customers, riders, and restaurants.</p>
           </div>
           <div className="card">
-            <h3>Complaint AI</h3>
-            <p className="muted">Resolve late delivery, missing item, and quality issues faster.</p>
+            <h3>Smart Operations</h3>
+            <p className="muted">Kitchen load, freshness score, complaints, refunds, trust score, and rider workload are connected.</p>
           </div>
         </div>
       </section>

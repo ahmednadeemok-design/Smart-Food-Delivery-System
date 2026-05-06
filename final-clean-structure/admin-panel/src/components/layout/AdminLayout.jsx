@@ -23,10 +23,12 @@ export default function AdminLayout() {
                 <Link to="/users">Users</Link>
                 <Link to="/riders">Riders</Link>
                 <Link to="/restaurants">Restaurants</Link>
+                <Link to="/orders">Orders</Link>
                 <Link to="/complaints">Complaints</Link>
                 <Link to="/refunds">Refunds</Link>
                 <Link to="/trust-scores">Trust</Link>
                 <Link to="/analytics">Analytics</Link>
+                <Link to="/system-health">Health</Link>
                 <span className="badge">{user?.role || "admin"}</span>
                 <button className="btn outline" onClick={handleLogout}>Logout</button>
               </>

@@ -28,11 +28,20 @@ const orderSchema = new mongoose.Schema(
     paymentStatus: { type: String, enum: ["pending", "paid", "failed", "refunded"], default: "pending" },
     subtotal: { type: Number, required: true },
     deliveryFee: { type: Number, default: 0 },
+    platformFee: { type: Number, default: 0 },
+    serviceFee: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
     otp: String,
     emergencyMode: { type: Boolean, default: false },
     freshnessScore: { type: Number, default: 100 },
     estimatedDeliveryTime: Number,
+    statusTimeline: [
+      {
+        status: String,
+        label: String,
+        at: { type: Date, default: Date.now },
+      },
+    ],
     deliveredAt: Date,
   },
   { timestamps: true }

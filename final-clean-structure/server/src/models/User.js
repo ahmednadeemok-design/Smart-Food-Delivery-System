@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema(
     address: { type: String, default: "" },
     location: { lat: Number, lng: Number },
     trustScore: { type: Number, default: 100, min: 0, max: 100 },
+    isBlocked: { type: Boolean, default: false },
+    blockReason: String,
     subscription: { isActive: { type: Boolean, default: false }, expiryDate: Date },
     healthProfile: { caloriesGoal: Number, dietType: String, allergies: [String] },
     lastOrderAt: Date,

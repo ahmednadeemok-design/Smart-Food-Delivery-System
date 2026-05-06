@@ -2,7 +2,7 @@ export default function TrustScoreCard({ name, type, score }) {
   const badgeClass = score >= 85 ? "success" : score >= 70 ? "warning" : "danger";
 
   return (
-    <div className="card">
+    <div>
       <span className={`badge ${badgeClass}`}>{type}</span>
       <h3>{name}</h3>
       <h1>{score}%</h1>

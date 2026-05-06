@@ -31,7 +31,15 @@ export default function OrderTable({ orders, onStatusChange }) {
                   <option value="preparing">Preparing</option>
                   <option value="ready">Ready</option>
                   <option value="picked">Picked</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Rejected / Cancelled</option>
                 </select>
+                {order.status === "pending" && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    <button className="btn success" onClick={() => onStatusChange(order._id, "accepted")}>Accept</button>
+                    <button className="btn danger" onClick={() => window.confirm("Reject this order?") && onStatusChange(order._id, "cancelled")}>Reject</button>
+                  </div>
+                )}
               </td>
             </tr>
           ))}

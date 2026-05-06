@@ -54,6 +54,7 @@ a { color: inherit; text-decoration: none; }
 .btn:hover { background: var(--primary-dark); }
 .btn.outline { background: white; color: var(--text); border: 1px solid var(--border); }
 .btn.danger { background: var(--danger); }
+.btn.success { background: var(--success); }
 
 .input, select, textarea {
   width: 100%;
