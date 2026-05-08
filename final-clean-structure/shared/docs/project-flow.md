@@ -3,7 +3,7 @@
 1. Restaurant owner logs in and manages Narowal restaurant profiles and menu items.
 2. Customer browses Narowal restaurants such as Palmer Restaurant, Buddy's Narowal, City Restaurant Narowal, and Virsa Restaurant Narowal.
 3. Customer places an order with a Narowal delivery address.
-4. Rider app uses Narowal city center as the default route center and demonstrates pickups/drop-offs around Main Bazaar, Circular Road, College Road, Railway Road, and UET Narowal.
+4. Rider app uses Narowal city center as the default route center and demonstrates pickups/drop-offs around Main Bazaar, Circular Road, Railway Road, DHQ Hospital Area, and UET Narowal Campus.
 5. Admin monitors Narowal restaurants, riders, complaints, refunds, trust scores, and heatmap zones.
 6. AI recommendation uses restaurant/menu data from Narowal and falls back to Narowal sample menu items when no live menu payload is supplied.
 

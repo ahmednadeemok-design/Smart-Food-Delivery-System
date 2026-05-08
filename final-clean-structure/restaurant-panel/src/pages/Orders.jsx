@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import OrderTable from "../components/restaurant/OrderTable.jsx";
 import { getRestaurantOrders, updateOrderStatus } from "../services/orderService.js";
-import { mockOrders } from "../utils/mockData.js";
 import { toast } from "../utils/toast.js";
 
 const toTableOrder = (order) => ({
@@ -20,15 +19,17 @@ export default function Orders() {
     try {
       const res = await getRestaurantOrders();
       const restaurantOrders = res.data.data || [];
-      setOrders(restaurantOrders.length ? restaurantOrders.map(toTableOrder) : mockOrders);
+      setOrders(restaurantOrders.map(toTableOrder));
     } catch (err) {
       toast.error(err.message);
-      setOrders(mockOrders);
+      setOrders([]);
     }
   };
 
   useEffect(() => {
     loadOrders();
+    const interval = setInterval(loadOrders, 12000);
+    return () => clearInterval(interval);
   }, []);
 
   const updateStatus = async (orderId, status) => {

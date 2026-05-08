@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { dbUnavailableResponse, isDbReady } = require("../utils/authUtils");
 
 exports.protect = async (req, res, next) => {
   try {
@@ -16,6 +17,8 @@ exports.protect = async (req, res, next) => {
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ success: false, message: "JWT_SECRET is missing in server environment" });
     }
+
+    if (!isDbReady()) return dbUnavailableResponse(res);
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id).select("-password");

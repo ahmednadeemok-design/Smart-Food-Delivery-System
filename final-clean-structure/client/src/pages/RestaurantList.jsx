@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import RestaurantCard from "../components/restaurant/RestaurantCard.jsx";
 import Loading from "../components/common/Loading.jsx";
 import ErrorMessage from "../components/common/ErrorMessage.jsx";
@@ -14,8 +15,11 @@ const distanceKm = (a, b) => {
 
 export default function RestaurantList() {
   const [restaurants, setRestaurants] = useState([]);
-  const [query, setQuery] = useState("");
-  const [cuisine, setCuisine] = useState("");
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [cuisine, setCuisine] = useState(searchParams.get("cuisine") || "");
+  const [onlyOpen, setOnlyOpen] = useState(false);
+  const [sort, setSort] = useState("nearby");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -26,35 +30,62 @@ export default function RestaurantList() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    setCuisine(searchParams.get("cuisine") || "");
+    setQuery(searchParams.get("q") || "");
+  }, [searchParams]);
+
   const cuisines = [...new Set(restaurants.flatMap((restaurant) => restaurant.cuisineTypes || []))];
   const filteredRestaurants = restaurants.filter((restaurant) => {
     const searchable = [restaurant.name, restaurant.description, restaurant.address].join(" ").toLowerCase();
     const matchesQuery = searchable.includes(query.toLowerCase());
     const matchesCuisine = !cuisine || restaurant.cuisineTypes?.includes(cuisine);
-    return matchesQuery && matchesCuisine;
-  }).sort((a, b) => distanceKm(USER_LOCATION, a.location || USER_LOCATION) - distanceKm(USER_LOCATION, b.location || USER_LOCATION));
+    const matchesOpen = !onlyOpen || restaurant.isOpen !== false;
+    return matchesQuery && matchesCuisine && matchesOpen;
+  }).sort((a, b) => {
+    if (sort === "rating") return (b.rating || 0) - (a.rating || 0);
+    if (sort === "delivery") return (a.deliveryFeeBase || 125) - (b.deliveryFeeBase || 125);
+    return distanceKm(USER_LOCATION, a.location || USER_LOCATION) - distanceKm(USER_LOCATION, b.location || USER_LOCATION);
+  });
 
   return (
-    <section className="page">
+    <section className="page listing-page">
       <div className="container">
-        <h1>Restaurants</h1>
-        <p className="muted">Nearby Narowal restaurants sorted from the city center with kitchen load, accuracy prediction, and trust score.</p>
-        <div className="card form" style={{ marginBottom: 18 }}>
-          <input className="input" placeholder="Search restaurants in Narowal" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <select value={cuisine} onChange={(e) => setCuisine(e.target.value)}>
-            <option value="">All cuisines</option>
-            {cuisines.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
+        <div className="listing-head">
+          <div>
+            <span className="badge">Narowal restaurants</span>
+            <h1>Restaurants delivering near you</h1>
+            <p className="muted">Search local kitchens, compare ETA, fees, ratings, and kitchen load.</p>
+          </div>
+          <div className="listing-count">{filteredRestaurants.length} places</div>
         </div>
+        <div className="listing-layout">
+          <aside className="filter-panel">
+            <h3>Filters</h3>
+            <input className="input" placeholder="Search food or restaurant" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <select value={cuisine} onChange={(e) => setCuisine(e.target.value)}>
+              <option value="">All cuisines</option>
+              {cuisines.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+            <select value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="nearby">Nearest first</option>
+              <option value="rating">Highest rated</option>
+              <option value="delivery">Lowest delivery fee</option>
+            </select>
+            <label className="check-row"><input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} /> Open now</label>
+          </aside>
+          <div>
         {loading && <Loading />}
         <ErrorMessage message={error} />
         {!loading && filteredRestaurants.length === 0 && (
-          <div className="card">No restaurants found.</div>
+          <div className="empty-state"><h3>No restaurants found</h3><p>Try another Narowal area, cuisine, or search term.</p></div>
         )}
         <div className="grid grid-3">
           {filteredRestaurants.map((restaurant) => (
             <RestaurantCard key={restaurant._id} restaurant={restaurant} />
           ))}
+        </div>
+          </div>
         </div>
       </div>
     </section>

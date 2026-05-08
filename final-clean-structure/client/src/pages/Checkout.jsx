@@ -5,6 +5,7 @@ import { clearCart, getCart, cartTotals } from "../store/cartStore.js";
 import { toast } from "../utils/toast.js";
 import formatCurrency from "../utils/formatCurrency.js";
 import SmartMap from "../components/map/SmartMap.jsx";
+import { useAuth } from "../store/AuthContext.jsx";
 
 const SAVED_ADDRESS_KEY = "smart_food_saved_address";
 const NAROWAL_ADDRESSES = [
@@ -32,11 +33,14 @@ const ADDRESS_LOCATIONS = {
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const { user, refreshProfile } = useAuth();
   const cart = getCart();
   const totals = cartTotals(cart);
   const [form, setForm] = useState({
     deliveryAddress: localStorage.getItem(SAVED_ADDRESS_KEY) || "",
     paymentMethod: "cod",
+    couponCode: "",
+    loyaltyPointsRedeemed: 0,
     emergencyMode: false,
     deliveryLocation: ADDRESS_LOCATIONS[localStorage.getItem(SAVED_ADDRESS_KEY)] || { lat: 32.1020, lng: 74.8740 },
   });
@@ -57,6 +61,8 @@ export default function Checkout() {
       deliveryAddress: form.deliveryAddress.trim(),
       deliveryLocation: selectedLocation,
       paymentMethod: form.paymentMethod,
+      couponCode: form.couponCode,
+      loyaltyPointsRedeemed: Number(form.loyaltyPointsRedeemed || 0),
       emergencyMode: form.emergencyMode,
       distanceKm: 3,
     };
@@ -64,6 +70,7 @@ export default function Checkout() {
     try {
       const res = await createOrder(payload);
       clearCart();
+      await refreshProfile();
       toast.success("Order placed successfully");
       navigate("/order-confirmation", { state: { order: res.data.data } });
     } catch (err) {
@@ -73,10 +80,20 @@ export default function Checkout() {
 
   return (
     <section className="page">
-      <div className="container" style={{ maxWidth: 640 }}>
-        <form className="card form" onSubmit={submit}>
+      <div className="container checkout-layout">
+        <form className="card form checkout-card" onSubmit={submit}>
+          <span className="badge">Secure COD checkout</span>
           <h1>Checkout</h1>
-          <p className="muted">Narowal delivery with COD as the default payment method.</p>
+          <p className="muted">Choose a Narowal delivery point, confirm COD, and place your order.</p>
+          {user?.savedAddresses?.length > 0 && (
+            <select value={form.deliveryAddress} onChange={(e) => {
+              const picked = user.savedAddresses.find((item) => item.address === e.target.value);
+              setForm({ ...form, deliveryAddress: e.target.value, deliveryLocation: picked?.location || form.deliveryLocation });
+            }}>
+              <option value="">Saved addresses</option>
+              {user.savedAddresses.map((item) => <option key={item._id} value={item.address}>{item.label} - {item.address}</option>)}
+            </select>
+          )}
           <select value={form.deliveryAddress} onChange={(e) => setForm({ ...form, deliveryAddress: e.target.value, deliveryLocation: ADDRESS_LOCATIONS[e.target.value] || form.deliveryLocation })}>
             <option value="">Choose saved Narowal area or type below</option>
             {NAROWAL_ADDRESSES.map((address) => <option key={address} value={address}>{address}</option>)}
@@ -88,23 +105,25 @@ export default function Checkout() {
           />
           <select value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>
             <option value="cod">Cash on Delivery</option>
-            <option value="card">Card</option>
-            <option value="wallet">Wallet</option>
           </select>
+          <input className="input" placeholder="Coupon code: NAROWAL50, UET100, BAZAAR10" value={form.couponCode} onChange={(e) => setForm({ ...form, couponCode: e.target.value.toUpperCase() })} />
+          <input className="input" type="number" min="0" max={user?.loyalty?.points || 0} placeholder={`Redeem points (${user?.loyalty?.points || 0} available)`} value={form.loyaltyPointsRedeemed} onChange={(e) => setForm({ ...form, loyaltyPointsRedeemed: e.target.value })} />
           <label>
             <input type="checkbox" checked={form.emergencyMode} onChange={(e) => setForm({ ...form, emergencyMode: e.target.checked })} />
             {" "}Emergency Food Mode
           </label>
-          <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12 }}>
-            <h3>Payment Summary</h3>
-            <p>Subtotal: <b>{formatCurrency(totals.subtotal)}</b></p>
-            <p>Delivery Fee Estimate: <b>{formatCurrency(totals.deliveryFee)}</b></p>
-            <p>Platform Fee: <b>{formatCurrency(totals.platformFee)}</b></p>
-            <p>Service Fee: <b>{formatCurrency(totals.serviceFee)}</b></p>
-            <p>Total Estimate: <b>{formatCurrency(totals.total)}</b></p>
-          </div>
           <button className="btn">Place Order</button>
         </form>
+        <aside className="order-summary-card">
+          <h3>Payment Summary</h3>
+          <div className="summary-row"><span>Subtotal</span><b>{formatCurrency(totals.subtotal)}</b></div>
+          <div className="summary-row"><span>Delivery estimate</span><b>{formatCurrency(totals.deliveryFee)}</b></div>
+          <div className="summary-row"><span>Platform fee</span><b>{formatCurrency(totals.platformFee)}</b></div>
+          <div className="summary-row"><span>Service fee</span><b>{formatCurrency(totals.serviceFee)}</b></div>
+          <div className="summary-row total"><span>Total estimate</span><b>{formatCurrency(totals.total)}</b></div>
+          <p className="muted">Payment method: Cash on Delivery</p>
+          <p className="muted">Loyalty: {user?.loyalty?.points || 0} points available</p>
+        </aside>
       </div>
     </section>
   );

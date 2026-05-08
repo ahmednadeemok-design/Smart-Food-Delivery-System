@@ -14,6 +14,7 @@ import OrderTracking from "./pages/OrderTracking.jsx";
 import Complaint from "./pages/Complaint.jsx";
 import Subscription from "./pages/Subscription.jsx";
 import HealthDashboard from "./pages/HealthDashboard.jsx";
+import Profile from "./pages/Profile.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/complaint" element={<Complaint />} />
           <Route path="/subscription" element={<Subscription />} />
           <Route path="/health" element={<HealthDashboard />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
 
         <Route path="/home" element={<Navigate to="/" replace />} />

@@ -2,18 +2,15 @@ import formatCurrency from "../../utils/formatCurrency.js";
 
 export default function CartItem({ item, onRemove, onQuantityChange }) {
   return (
-    <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div className="cart-line">
       <div>
         <h3>{item.name}</h3>
         <p className="muted">Calories: {(item.calories || 0) * item.quantity}</p>
-        <input
-          className="input"
-          type="number"
-          min="1"
-          value={item.quantity}
-          onChange={(e) => onQuantityChange(item._id, e.target.value)}
-          style={{ maxWidth: 90 }}
-        />
+        <div className="quantity-stepper">
+          <button type="button" onClick={() => onQuantityChange(item._id, item.quantity - 1)}>-</button>
+          <span>{item.quantity}</span>
+          <button type="button" onClick={() => onQuantityChange(item._id, item.quantity + 1)}>+</button>
+        </div>
       </div>
       <div style={{ textAlign: "right" }}>
         <b>{formatCurrency(item.price * item.quantity)}</b>

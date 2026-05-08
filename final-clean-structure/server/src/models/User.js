@@ -12,6 +12,22 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String, default: "" },
     address: { type: String, default: "" },
     location: { lat: Number, lng: Number },
+    savedAddresses: [
+      {
+        label: { type: String, default: "Narowal address" },
+        address: String,
+        area: String,
+        location: { lat: Number, lng: Number },
+        isDefault: { type: Boolean, default: false },
+      },
+    ],
+    loyalty: {
+      points: { type: Number, default: 0 },
+      redeemedPoints: { type: Number, default: 0 },
+      badge: { type: String, enum: ["Bronze", "Silver", "Gold"], default: "Bronze" },
+    },
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
     trustScore: { type: Number, default: 100, min: 0, max: 100 },
     isBlocked: { type: Boolean, default: false },
     blockReason: String,
@@ -34,6 +50,11 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 userSchema.methods.getSignedJwtToken = function () {
+  if (!process.env.JWT_SECRET) {
+    const error = new Error("JWT_SECRET is missing in server environment");
+    error.statusCode = 500;
+    throw error;
+  }
   return jwt.sign({ id: this._id, role: this.role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || "7d",
   });

@@ -1,37 +1,135 @@
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import HeatMapPlaceholder from "../components/map/HeatMapPlaceholder.jsx";
+import RestaurantCard from "../components/restaurant/RestaurantCard.jsx";
+import FoodCard from "../components/food/FoodCard.jsx";
+import { getRestaurants, getRestaurantItems } from "../services/restaurantService.js";
+import { addToCart } from "../store/cartStore.js";
+import { toast } from "../utils/toast.js";
+
+const categories = ["Biryani", "Karahi", "Burger", "Pizza", "BBQ", "Bakery", "Tea", "Healthy"];
+const areas = ["UET Narowal Campus", "Railway Road", "Main Bazaar", "Circular Road", "Zafarwal Road", "DHQ Hospital", "Narowal Railway Station"];
 
 export default function Home() {
+  const navigate = useNavigate();
+  const [restaurants, setRestaurants] = useState([]);
+  const [foods, setFoods] = useState([]);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    getRestaurants().then(async (res) => {
+      const list = res.data.data || [];
+      setRestaurants(list);
+      const menuResponses = await Promise.all(list.slice(0, 4).map((restaurant) => getRestaurantItems(restaurant._id)));
+      setFoods(menuResponses.flatMap((menuRes, index) => (menuRes.data.data || []).slice(0, 2).map((item) => ({ ...item, restaurantName: list[index]?.name }))));
+    }).catch(() => {});
+  }, []);
+
+  const featured = useMemo(() => restaurants.filter((item) => item.isFeatured || item.rating >= 4.4).slice(0, 3), [restaurants]);
+  const trending = useMemo(() => restaurants.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3), [restaurants]);
+  const popularNearYou = useMemo(() => restaurants.slice(3, 7), [restaurants]);
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    navigate(`/restaurants${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""}`);
+  };
+
   return (
     <>
-      <section className="hero">
-        <div className="container">
-          <span className="badge">Narowal city food delivery</span>
-          <h1>SmartFood Narowal</h1>
-          <p>
-            Order from Palmer Restaurant, Buddy's Narowal, City Restaurant, Anbala Sweets, ZFC, Virsa, and other local
-            Narowal spots with COD, transparent fees, OTP delivery verification, and AI-backed recommendations.
-          </p>
-          <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
-            <Link className="btn" to="/restaurants">Explore Restaurants</Link>
-            <Link className="btn outline" to="/register">Create Account</Link>
+      <section className="market-hero">
+        <div className="container hero-grid">
+          <div className="hero-copy">
+            <span className="badge hero-badge">Delivering to Narowal</span>
+            <h1>Food, groceries, and local favourites delivered across Narowal.</h1>
+            <p>Order from trusted Narowal restaurants with COD, live tracking, loyalty points, and smart delivery estimates.</p>
+            <form className="hero-search" onSubmit={submitSearch}>
+              <select aria-label="Delivery area">
+                {areas.map((area) => <option key={area}>{area}</option>)}
+              </select>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search biryani, burgers, pizza or restaurants" />
+              <button className="btn">Find food</button>
+            </form>
+            <div className="quick-areas">
+              {areas.slice(0, 5).map((area) => <Link key={area} to={`/restaurants?q=${encodeURIComponent(area)}`}>{area}</Link>)}
+            </div>
+          </div>
+          <div className="hero-deal-card">
+            <span className="badge success">COD default</span>
+            <h2>NAROWAL50</h2>
+            <p>PKR 50 off local orders above PKR 350.</p>
+            <div className="deal-stats">
+              <span><b>30-45</b><small>min ETA</small></span>
+              <span><b>PKR</b><small>local pricing</small></span>
+              <span><b>OTP</b><small>secure delivery</small></span>
+            </div>
           </div>
         </div>
       </section>
 
       <section className="page">
-        <div className="container grid grid-3">
-          <div className="card">
-            <h3>Narowal Zones</h3>
-            <p className="muted">UET Campus, Main Bazaar, Circular Road, Railway Road, DHQ area, and Shakargarh Road coverage.</p>
+        <div className="container">
+          <div className="category-strip">
+            {categories.map((category) => <Link className="category-tile" key={category} to={`/restaurants?cuisine=${category}`}><span>{category}</span></Link>)}
           </div>
-          <div className="card">
-            <h3>COD + OTP</h3>
-            <p className="muted">Cash on delivery stays simple, while OTP confirmation protects customers, riders, and restaurants.</p>
+        </div>
+      </section>
+
+      <section className="page section-tight">
+        <div className="container">
+          <div className="promo-grid">
+            <div className="promo-card">
+              <span className="badge">Lunch rush</span>
+              <h3>Main Bazaar favourites</h3>
+              <p>Fast COD delivery from City Restaurant, Anbala, and more.</p>
+            </div>
+            <div className="promo-card dark">
+              <span className="badge success">Student deals</span>
+              <h3>UET Narowal Campus</h3>
+              <p>Budget meals, burgers, biryani, and tea near campus.</p>
+            </div>
           </div>
-          <div className="card">
-            <h3>Smart Operations</h3>
-            <p className="muted">Kitchen load, freshness score, complaints, refunds, trust score, and rider workload are connected.</p>
+        </div>
+      </section>
+
+      <section className="page section-tight">
+        <div className="container">
+          <div className="section-head">
+            <h2>Featured Restaurants</h2>
+            <Link to="/restaurants">View all</Link>
+          </div>
+          <div className="grid grid-3">
+            {(featured.length ? featured : restaurants.slice(0, 3)).map((restaurant) => (
+              <RestaurantCard key={restaurant._id} restaurant={restaurant} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="page soft-band">
+        <div className="container">
+          <div className="section-head">
+            <h2>Recommended Food</h2>
+            <span className="muted">Based on Narowal demand and kitchen freshness</span>
+          </div>
+          <div className="grid grid-3">
+            {foods.slice(0, 6).map((item) => (
+              <FoodCard key={item._id} item={item} onAdd={(food) => {
+                addToCart({ ...food, restaurant: food.restaurant });
+                toast.success("Added to cart");
+              }} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="page">
+        <div className="container">
+          <div className="section-head">
+            <h2>Popular Near You</h2>
+            <span className="muted">High-rated Narowal kitchens</span>
+          </div>
+          <div className="grid grid-3">
+            {(popularNearYou.length ? popularNearYou : trending).map((restaurant) => <RestaurantCard key={restaurant._id} restaurant={restaurant} />)}
           </div>
         </div>
       </section>

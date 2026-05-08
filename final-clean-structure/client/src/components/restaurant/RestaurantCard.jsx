@@ -7,21 +7,24 @@ export default function RestaurantCard({ restaurant }) {
 
   return (
     <Link to={`/restaurants/${restaurant._id}`} className="card restaurant-card">
+      <div className="media-wrap">
+        {restaurant.offerText && <span className="floating-offer">{restaurant.offerText}</span>}
       <img
         src={restaurant.image || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=900"}
         alt={restaurant.name}
       />
+      </div>
       <h3>{restaurant.name}</h3>
-      <p className="muted">{restaurant.description || "Fresh food with smart delivery."}</p>
+      <p className="muted restaurant-cuisines">{(restaurant.cuisineTypes || []).slice(0, 3).join(" • ") || "Fresh food with smart delivery."}</p>
       <p className="muted">{restaurant.address || "Narowal city"}</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <span className="badge">Rating: {restaurant.rating || 0}</span>
+        <span className="badge">Rating {restaurant.rating || 0}</span>
         <span className="badge">Kitchen: {restaurant.kitchenLoad}</span>
         <span className="badge">{restaurant.isOpen === false ? "Closed" : "Open"}</span>
         <span className="badge">{deliveryEstimate} min</span>
         <span className="badge">Delivery Rs. {deliveryFee}</span>
+        <span className="badge">Min Rs. 350</span>
         <span className="badge">Trust: {restaurant.trustScore}</span>
-        <span className="badge">Accuracy: {restaurant.accuracyRate}%</span>
       </div>
     </Link>
   );

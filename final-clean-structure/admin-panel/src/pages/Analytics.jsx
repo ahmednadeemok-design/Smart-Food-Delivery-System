@@ -10,13 +10,13 @@ export default function Analytics() {
     "Main Bazaar 32.1008, 74.8712",
     "UET Narowal 32.1135, 74.8734",
     "Railway Road 32.0990, 74.8678",
-    "DHQ Hospital area 32.1058, 74.8792",
+    "DHQ Hospital Area 32.1058, 74.8792",
   ];
   const mapPoints = [
     { label: "Main Bazaar", lat: 32.1008, lng: 74.8712 },
     { label: "UET Narowal Campus", lat: 32.1135, lng: 74.8734 },
     { label: "Railway Road", lat: 32.0990, lng: 74.8678 },
-    { label: "DHQ Hospital area", lat: 32.1058, lng: 74.8792 },
+    { label: "DHQ Hospital Area", lat: 32.1058, lng: 74.8792 },
     center && { label: "Narowal City Center", ...center },
   ].filter(Boolean);
 
@@ -24,7 +24,7 @@ export default function Analytics() {
     <section className="page">
       <div className="container">
         <h1>Platform Analytics</h1>
-        <p className="muted">Narowal city performance across Main Bazaar, Circular Road, College Road, Railway Road, and UET Narowal zones.</p>
+        <p className="muted">Narowal city performance across Main Bazaar, Circular Road, Railway Road, UET Narowal Campus, and DHQ Hospital Area zones.</p>
 
         <div className="grid grid-4">
           <StatCard title="Users" value={stats.users} subtitle="Registered platform users" />
@@ -36,7 +36,7 @@ export default function Analytics() {
         <div className="grid grid-2" style={{ marginTop: 18 }}>
           <div className="card">
             <h3>Narowal Demand Heatmap</h3>
-            <p className="muted">Hot zones: Main Bazaar lunch rush, College Road fast-food evening demand, and UET Narowal hostel deliveries.</p>
+            <p className="muted">Hot zones: Main Bazaar lunch rush, UET Narowal Campus fast-food evening demand, and Railway Road station deliveries.</p>
             <AdminMap points={mapPoints} />
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
               {zones.map((zone) => <span className="badge" key={zone}>{zone}</span>)}
@@ -45,7 +45,7 @@ export default function Analytics() {
           <div className="card">
             <h3>Fraud Monitoring</h3>
             <p className="muted">Detect repeat fake complaints and abnormal refund behavior.</p>
-            <span className="badge warning">Medium Risk Zone: College Road fast-food cluster</span>
+            <span className="badge warning">Medium Risk Zone: UET Narowal Campus fast-food cluster</span>
           </div>
         </div>
       </div>

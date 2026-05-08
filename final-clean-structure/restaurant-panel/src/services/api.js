@@ -1,8 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.DEV
-  ? "/api"
-  : import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -21,9 +19,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
-    const requestConfig = error?.config || {};
-    const requestUrl = `${requestConfig.baseURL || ""}${requestConfig.url || ""}`;
-    const message = error?.response?.data?.message || (status ? error.message : `Network Error: cannot reach ${requestUrl}`);
+    const message = error?.response?.data?.message || (status ? `Request failed with status ${status}` : "Server is not reachable. Please make sure backend is running.");
     const normalizedError = new Error(message);
     normalizedError.status = status;
 

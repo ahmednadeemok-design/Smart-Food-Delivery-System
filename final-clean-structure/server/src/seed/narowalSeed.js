@@ -21,10 +21,12 @@ const NAROWAL_CENTER = { lat: 32.1020, lng: 74.8740 };
 const restaurants = [
   {
     name: "Palmer Restaurant",
+    ownerEmail: "palmer@smartfood.test",
+    ownerName: "Palmer Owner",
     address: "Circular Road, near Narowal City Center",
     localArea: "Circular Road",
     cuisineTypes: ["Desi", "Fast Food", "Family Restaurant"],
-    phone: "0542-000001",
+    phone: "+923000000001",
     image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=900",
     rating: 4.4,
     kitchenLoad: "medium",
@@ -40,10 +42,12 @@ const restaurants = [
   },
   {
     name: "Buddy's Narowal",
-    address: "College Road, Narowal",
-    localArea: "College Road",
+    ownerEmail: "buddys@smartfood.test",
+    ownerName: "Buddy's Owner",
+    address: "UET Narowal Campus, Narowal",
+    localArea: "UET Narowal Campus",
     cuisineTypes: ["Fast Food", "Pizza", "Burger"],
-    phone: "0542-000002",
+    phone: "+923000000002",
     image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=900",
     rating: 4.3,
     kitchenLoad: "high",
@@ -59,10 +63,12 @@ const restaurants = [
   },
   {
     name: "The Dining Family Restaurant",
+    ownerEmail: "dining@smartfood.test",
+    ownerName: "The Dining Owner",
     address: "Zafarwal Road, Narowal",
     localArea: "Zafarwal Road",
     cuisineTypes: ["Family Restaurant", "Desi", "Chinese"],
-    phone: "0542-000003",
+    phone: "+923000000003",
     image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=900",
     rating: 4.5,
     kitchenLoad: "medium",
@@ -78,10 +84,12 @@ const restaurants = [
   },
   {
     name: "City Restaurant Narowal",
+    ownerEmail: "city@smartfood.test",
+    ownerName: "City Restaurant Owner",
     address: "Main Bazaar, Narowal",
     localArea: "Main Bazaar",
     cuisineTypes: ["Desi", "Biryani", "Tea"],
-    phone: "0542-000004",
+    phone: "+923000000004",
     image: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?q=80&w=900",
     rating: 4.1,
     kitchenLoad: "low",
@@ -97,10 +105,12 @@ const restaurants = [
   },
   {
     name: "Moon Grill Restaurant",
+    ownerEmail: "moon@smartfood.test",
+    ownerName: "Moon Grill Owner",
     address: "Railway Road, Narowal",
     localArea: "Railway Road",
     cuisineTypes: ["BBQ", "Grill", "Desi"],
-    phone: "0542-000005",
+    phone: "+923000000005",
     image: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=900",
     rating: 4.2,
     kitchenLoad: "medium",
@@ -116,10 +126,12 @@ const restaurants = [
   },
   {
     name: "Lasani Al Khan Restaurant",
+    ownerEmail: "lasani@smartfood.test",
+    ownerName: "Lasani Owner",
     address: "Shakargarh Road, Narowal",
     localArea: "Shakargarh Road",
     cuisineTypes: ["Desi", "Karahi", "Family Restaurant"],
-    phone: "0542-000006",
+    phone: "+923000000006",
     image: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=900",
     rating: 4.4,
     kitchenLoad: "high",
@@ -135,10 +147,12 @@ const restaurants = [
   },
   {
     name: "Crunch Bite Family Restaurant",
+    ownerEmail: "crunchbite@smartfood.test",
+    ownerName: "Crunch Bite Owner",
     address: "New Lahore Road, Narowal",
     localArea: "New Lahore Road",
     cuisineTypes: ["Fast Food", "Burger", "Pizza"],
-    phone: "0542-000007",
+    phone: "+923000000007",
     image: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=900",
     rating: 4.0,
     kitchenLoad: "medium",
@@ -154,10 +168,12 @@ const restaurants = [
   },
   {
     name: "Anbala Sweets, Bakers and Cash & Carry",
-    address: "Main Market, Narowal",
-    localArea: "Main Market",
+    ownerEmail: "anbala@smartfood.test",
+    ownerName: "Anbala Owner",
+    address: "Main Bazaar, Narowal",
+    localArea: "Main Bazaar",
     cuisineTypes: ["Bakery", "Sweets", "Breakfast"],
-    phone: "0542-000008",
+    phone: "+923000000008",
     image: "https://images.unsplash.com/photo-1483695028939-5bb13f8648b0?q=80&w=900",
     rating: 4.6,
     kitchenLoad: "low",
@@ -173,10 +189,12 @@ const restaurants = [
   },
   {
     name: "ZFC Narowal",
-    address: "Pasrur Road, Narowal",
-    localArea: "Pasrur Road",
+    ownerEmail: "zfc@smartfood.test",
+    ownerName: "ZFC Narowal Owner",
+    address: "Narowal Railway Station, main entrance",
+    localArea: "Narowal Railway Station",
     cuisineTypes: ["Fast Food", "Fried Chicken", "Burger"],
-    phone: "0542-000009",
+    phone: "+923000000009",
     image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?q=80&w=900",
     rating: 4.1,
     kitchenLoad: "medium",
@@ -192,10 +210,12 @@ const restaurants = [
   },
   {
     name: "Virsa Restaurant Narowal",
-    address: "Muridke Road link, Narowal",
-    localArea: "Muridke Road Link",
+    ownerEmail: "virsa@smartfood.test",
+    ownerName: "Virsa Owner",
+    address: "DHQ Hospital Area, Narowal",
+    localArea: "DHQ Hospital Area",
     cuisineTypes: ["Desi", "Traditional", "Family Restaurant"],
-    phone: "0542-000010",
+    phone: "+923000000010",
     image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=900",
     rating: 4.7,
     kitchenLoad: "medium",
@@ -214,8 +234,8 @@ const restaurants = [
 const demoUsers = [
   {
     name: "Ayesha Narowal",
-    email: "ayesha.customer@smartfood.local",
-    phone: "03000000101",
+    email: "customer@smartfood.test",
+    phone: "+923000000101",
     role: "customer",
     address: "UET Narowal Campus, Hostel Gate, Narowal",
     location: { lat: 32.1135, lng: 74.8734 },
@@ -224,7 +244,7 @@ const demoUsers = [
   {
     name: "Bilal Main Bazaar",
     email: "bilal.customer@smartfood.local",
-    phone: "03000000102",
+    phone: "+923000000102",
     role: "customer",
     address: "Main Bazaar, near Anbala Sweets, Narowal",
     location: { lat: 32.1008, lng: 74.8712 },
@@ -232,24 +252,24 @@ const demoUsers = [
   },
   {
     name: "SmartFood Narowal Admin",
-    email: "admin.narowal@smartfood.local",
-    phone: "03000000103",
+    email: "admin@smartfood.test",
+    phone: "+923000000103",
     role: "admin",
     address: "SmartFood Operations Desk, Circular Road, Narowal",
     location: NAROWAL_CENTER,
   },
   {
     name: "Rider Ali Railway Road",
-    email: "rider.ali@smartfood.local",
-    phone: "03000000104",
+    email: "rider@smartfood.test",
+    phone: "+923000000104",
     role: "rider",
     address: "Railway Road, Narowal",
     location: { lat: 32.0990, lng: 74.8678 },
   },
   {
     name: "Rider Usman UET Zone",
-    email: "rider.usman@smartfood.local",
-    phone: "03000000105",
+    email: "rider.usman@smartfood.test",
+    phone: "+923000000105",
     role: "rider",
     address: "UET Narowal Campus, Narowal",
     location: { lat: 32.1135, lng: 74.8734 },
@@ -291,29 +311,38 @@ const seed = async () => {
     AdminAuditLog.deleteMany({}),
   ]);
 
-  const owner = await User.create({
-    name: "Narowal Demo Restaurant Owner",
-    email: "narowal.owner@smartfood.local",
-    phone: "03000000001",
-    role: "restaurant",
-    password: "demo123",
-    address: "Circular Road, Narowal",
-    location: NAROWAL_CENTER,
-  });
-
   const usersByEmail = {};
   for (const demoUser of demoUsers) {
-    const user = await User.create({ ...demoUser, password: "demo123" });
+    const user = await User.create({ ...demoUser, password: "password123" });
     usersByEmail[demoUser.email] = user;
   }
 
+  const ownersByRestaurant = {};
+  for (const [index, entry] of restaurants.entries()) {
+    const owner = await User.create({
+      name: entry.ownerName,
+      email: entry.ownerEmail,
+      phone: `+9230000010${String(index).padStart(2, "0")}`,
+      role: "restaurant",
+      password: "password123",
+      address: entry.address,
+      location: entry.location || NAROWAL_CENTER,
+    });
+    ownersByRestaurant[entry.name] = owner;
+    usersByEmail[entry.ownerEmail] = owner;
+  }
+
   const riderAli = await Rider.findOneAndUpdate(
-    { user: usersByEmail["rider.ali@smartfood.local"]._id },
+    { user: usersByEmail["rider@smartfood.test"]._id },
     {
-      user: usersByEmail["rider.ali@smartfood.local"]._id,
+      user: usersByEmail["rider@smartfood.test"]._id,
       vehicleType: "bike",
+      cnic: "35401-1234567-1",
+      bikeNumber: "NRL-ALI-125",
+      phoneVerified: true,
       currentLocation: { lat: 32.0990, lng: 74.8678 },
       isOnline: true,
+      availabilityStatus: "online",
       approvalStatus: "approved",
       isActive: true,
       isSuspended: false,
@@ -326,12 +355,16 @@ const seed = async () => {
   );
 
   const riderUsman = await Rider.findOneAndUpdate(
-    { user: usersByEmail["rider.usman@smartfood.local"]._id },
+    { user: usersByEmail["rider.usman@smartfood.test"]._id },
     {
-      user: usersByEmail["rider.usman@smartfood.local"]._id,
+      user: usersByEmail["rider.usman@smartfood.test"]._id,
       vehicleType: "bike",
+      cnic: "35401-7654321-2",
+      bikeNumber: "NRL-USMAN-70",
+      phoneVerified: true,
       currentLocation: { lat: 32.1135, lng: 74.8734 },
       isOnline: true,
+      availabilityStatus: "online",
       approvalStatus: "approved",
       isActive: true,
       isSuspended: false,
@@ -348,9 +381,9 @@ const seed = async () => {
   const restaurantsByName = {};
   const itemsByRestaurant = {};
 
-  for (const entry of restaurants) {
+  for (const [index, entry] of restaurants.entries()) {
     const restaurant = await Restaurant.create({
-        owner: owner._id,
+        owner: ownersByRestaurant[entry.name]._id,
         name: entry.name,
         description: `${entry.cuisineTypes.join(", ")} delivery in ${entry.localArea}, Narowal.`,
         phone: entry.phone,
@@ -358,7 +391,12 @@ const seed = async () => {
         localArea: entry.localArea,
         location: entry.location || NAROWAL_CENTER,
         image: entry.image,
+        logo: entry.image,
+        banner: entry.image,
         cuisineTypes: entry.cuisineTypes,
+        isFeatured: index < 4,
+        offerText: index < 3 ? "NAROWAL50 eligible" : "COD available",
+        deliveryFeeBase: entry.localArea === "Main Bazaar" ? 80 : entry.localArea === "UET Narowal Campus" ? 140 : 110,
         isOpen: entry.isOpen,
         approvalStatus: "approved",
         isActive: true,
@@ -384,6 +422,12 @@ const seed = async () => {
           category: item.category,
           calories: item.calories,
           tags: item.tags,
+          addOns: [
+            { name: "Extra raita", price: 60 },
+            { name: "Cold drink", price: 120 },
+          ],
+          options: [{ name: "Spice level", values: ["Mild", "Medium", "Full Narowal spice"], required: false }],
+          isFeatured: index < 4,
           isAvailable: true,
           tasteScore: Math.min(100, Math.round(entry.rating * 20)),
           complaintCount: 0,
@@ -396,9 +440,9 @@ const seed = async () => {
   const demoOrders = [
     {
       key: "narowal-demo-order-uet-palmer",
-      customer: usersByEmail["ayesha.customer@smartfood.local"],
+      customer: usersByEmail["customer@smartfood.test"],
       restaurant: restaurantsByName["Palmer Restaurant"],
-      rider: riderUsman,
+      rider: null,
       sourceItems: itemsByRestaurant["Palmer Restaurant"].slice(0, 2),
       deliveryAddress: "UET Narowal Campus, Girls Hostel Gate, Narowal",
       deliveryLocation: { lat: 32.1135, lng: 74.8734 },
@@ -428,7 +472,7 @@ const seed = async () => {
     },
     {
       key: "narowal-demo-order-zfc-railway",
-      customer: usersByEmail["ayesha.customer@smartfood.local"],
+      customer: usersByEmail["customer@smartfood.test"],
       restaurant: restaurantsByName["ZFC Narowal"],
       rider: null,
       sourceItems: itemsByRestaurant["ZFC Narowal"].slice(0, 2),
@@ -495,6 +539,7 @@ const seed = async () => {
 
     if (demoOrder.rider && !demoOrder.rider.activeOrders.some((id) => String(id) === String(order._id)) && demoOrder.status !== "delivered") {
       demoOrder.rider.activeOrders.push(order._id);
+      demoOrder.rider.availabilityStatus = "busy";
       await demoOrder.rider.save();
     }
 
@@ -518,8 +563,13 @@ const seed = async () => {
   }
 
   console.log(
-    `Narowal clean seed completed: reset target collections and inserted 1 owner, ${restaurantCount} restaurants, ${itemCount} menu items, ${demoUsers.length} users, 2 riders, ${orderCount} orders, and ${complaintCount} complaints.`
+    `Narowal clean seed completed: reset target collections and inserted ${restaurantCount} restaurant owners, ${restaurantCount} restaurants, ${itemCount} menu items, ${demoUsers.length} platform users, 2 riders, ${orderCount} orders, and ${complaintCount} complaints.`
   );
+  console.log("Demo login credentials:");
+  console.log("Admin: admin@smartfood.test / password123");
+  console.log("Customer: customer@smartfood.test / password123");
+  console.log("Rider: rider@smartfood.test / password123");
+  restaurants.forEach((entry) => console.log(`${entry.name} owner: ${entry.ownerEmail} / password123`));
   await mongoose.disconnect();
 };
 

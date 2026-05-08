@@ -7,17 +7,19 @@ export default function OrderConfirmation() {
 
   return (
     <section className="page">
-      <div className="container" style={{ maxWidth: 720 }}>
-        <div className="card">
+      <div className="container confirmation-wrap">
+        <div className="card confirmation-card">
           <span className="badge success">Order Confirmed</span>
           <h1>Food is on the way</h1>
           <p className="muted">Your COD order has been received and sent to the restaurant.</p>
           {order ? (
             <>
-              <p><b>Order:</b> #{order._id.slice(-6)}</p>
-              <p><b>Total:</b> {formatCurrency(order.totalAmount)}</p>
+              <div className="confirmation-grid">
+                <span><b>Order</b><small>#{order._id.slice(-6)}</small></span>
+                <span><b>Total</b><small>{formatCurrency(order.totalAmount)}</small></span>
+                <span><b>ETA</b><small>{order.estimatedDeliveryTime || 35} minutes</small></span>
+              </div>
               <p><b>Delivery Address:</b> {order.deliveryAddress}</p>
-              <p><b>Estimated Time:</b> {order.estimatedDeliveryTime || 35} minutes</p>
             </>
           ) : (
             <p className="muted">Open order tracking to view your latest order.</p>

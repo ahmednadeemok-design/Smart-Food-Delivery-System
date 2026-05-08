@@ -1,6 +1,6 @@
 import api from "./api.js";
 
 export const updateOrderStatus = (orderId, status) =>
-  api.patch(`/orders/${orderId}/status`, { status });
+  api.patch(`/orders/${orderId}/restaurant-status`, { status });
 
-export const getRestaurantOrders = () => api.get("/orders/my");
+export const getRestaurantOrders = () => api.get("/restaurants/my/orders");

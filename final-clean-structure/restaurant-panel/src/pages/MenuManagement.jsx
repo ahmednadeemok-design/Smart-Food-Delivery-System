@@ -140,7 +140,7 @@ export default function MenuManagement() {
           <input className="input" placeholder="Phone" value={restaurantForm.phone} onChange={(e) => setRestaurantForm({ ...restaurantForm, phone: e.target.value })} />
           <input className="input" placeholder="Address" value={restaurantForm.address} onChange={(e) => setRestaurantForm({ ...restaurantForm, address: e.target.value })} />
           <select value={restaurantForm.localArea} onChange={(e) => setRestaurantForm({ ...restaurantForm, localArea: e.target.value })}>
-            {["UET Narowal Campus", "Railway Road", "Zafarwal Road", "Circular Road", "Main Bazaar", "Shakargarh Road", "New Lahore Road", "DHQ Hospital area", "Narowal Railway Station"].map((area) => <option key={area} value={area}>{area}</option>)}
+            {["UET Narowal Campus", "Railway Road", "Zafarwal Road", "Circular Road", "Main Bazaar", "Shakargarh Road", "New Lahore Road", "DHQ Hospital Area", "Narowal Railway Station"].map((area) => <option key={area} value={area}>{area}</option>)}
           </select>
           <input className="input" placeholder="Cuisines: Desi, Fast Food" value={restaurantForm.cuisineTypes} onChange={(e) => setRestaurantForm({ ...restaurantForm, cuisineTypes: e.target.value })} />
           <select value={restaurantForm.kitchenLoad} onChange={(e) => setRestaurantForm({ ...restaurantForm, kitchenLoad: e.target.value })}>
@@ -187,7 +187,7 @@ export default function MenuManagement() {
               <span className="badge">{item.isAvailable ? "Available" : "Hidden"}</span>
               <h3>{item.name}</h3>
               <p className="muted">{item.description}</p>
-              <p><b>{formatCurrency(item.price)}</b> · {item.calories || 0} kcal</p>
+              <p><b>{formatCurrency(item.price)}</b> - {item.calories || 0} kcal</p>
               <button className="btn outline" onClick={() => toggleAvailability(item)}>
                 {item.isAvailable ? "Hide" : "Show"}
               </button>{" "}

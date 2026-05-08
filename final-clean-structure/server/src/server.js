@@ -22,6 +22,7 @@ const io = new Server(httpServer, {
 });
 
 initSocket(io);
+app.set("io", io);
 
 const server = httpServer.listen(PORT, HOST, () => {
   console.log(`Server running in ${process.env.NODE_ENV || "development"} mode`);

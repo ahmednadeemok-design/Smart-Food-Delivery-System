@@ -7,6 +7,8 @@ const orderItemSchema = new mongoose.Schema(
     price: Number,
     quantity: { type: Number, default: 1 },
     calories: Number,
+    addOns: [{ name: String, price: Number }],
+    options: [{ name: String, value: String }],
   },
   { _id: false }
 );
@@ -21,7 +23,7 @@ const orderSchema = new mongoose.Schema(
     deliveryLocation: { lat: Number, lng: Number },
     status: {
       type: String,
-      enum: ["pending", "accepted", "preparing", "ready", "picked", "delivered", "cancelled"],
+      enum: ["pending", "accepted", "preparing", "ready", "assigned", "picked", "delivered", "cancelled", "rejected"],
       default: "pending",
     },
     paymentMethod: { type: String, enum: ["cod", "card", "wallet"], default: "cod" },
@@ -30,6 +32,10 @@ const orderSchema = new mongoose.Schema(
     deliveryFee: { type: Number, default: 0 },
     platformFee: { type: Number, default: 0 },
     serviceFee: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
+    couponCode: String,
+    loyaltyPointsEarned: { type: Number, default: 0 },
+    loyaltyPointsRedeemed: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
     otp: String,
     emergencyMode: { type: Boolean, default: false },

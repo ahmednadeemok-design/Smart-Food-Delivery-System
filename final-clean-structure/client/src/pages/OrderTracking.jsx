@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { cancelOrder, getMyOrders, verifyDelivery } from "../services/orderService.js";
+import { cancelOrder, getMyOrders } from "../services/orderService.js";
 import socket from "../services/socket.js";
 import formatCurrency from "../utils/formatCurrency.js";
 import { toast } from "../utils/toast.js";
@@ -8,7 +8,6 @@ import SmartMap from "../components/map/SmartMap.jsx";
 
 export default function OrderTracking() {
   const [orders, setOrders] = useState([]);
-  const [otp, setOtp] = useState("");
 
   const loadOrders = () => {
     getMyOrders().then((res) => setOrders(res.data.data)).catch((err) => toast.error(err.message));
@@ -23,16 +22,6 @@ export default function OrderTracking() {
       socket.disconnect();
     };
   }, []);
-
-  const verify = async (orderId) => {
-    try {
-      await verifyDelivery(orderId, otp);
-      toast.success("Delivery verified");
-      loadOrders();
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
 
   const reorder = (order) => {
     order.items?.forEach((item) => {
@@ -62,27 +51,41 @@ export default function OrderTracking() {
   return (
     <section className="page">
       <div className="container">
-        <h1>Order Tracking</h1>
+        <div className="section-head">
+          <div>
+            <span className="badge">Live orders</span>
+            <h1>Order Tracking</h1>
+          </div>
+          <span className="muted">Realtime status and rider map</span>
+        </div>
         <div className="grid">
           {orders.map((order) => (
-            <div className="card" key={order._id}>
-              <span className="badge">{order.status}</span>
-              <h3>Order #{order._id.slice(-6)}</h3>
-              <p>Total: <b>{formatCurrency(order.totalAmount)}</b></p>
-              <p>Freshness Score: {order.freshnessScore}%</p>
-              <p>Estimated Delivery: {order.estimatedDeliveryTime} minutes</p>
-              <p>Delivery Fee: {formatCurrency(order.deliveryFee || 0)} | Platform Fee: {formatCurrency(order.platformFee || 0)}</p>
+            <div className="card tracking-card" key={order._id}>
+              <div className="tracking-head">
+                <div>
+                  <span className="badge">{order.status}</span>
+                  <h3>Order #{order._id.slice(-6)}</h3>
+                  <p className="muted">{order.restaurant?.name || "Restaurant"} to {order.deliveryAddress}</p>
+                </div>
+                <div className="tracking-total">{formatCurrency(order.totalAmount)}</div>
+              </div>
+              <div className="tracking-metrics">
+                <span><b>{order.freshnessScore}%</b><small>Freshness</small></span>
+                <span><b>{order.estimatedDeliveryTime || 35} min</b><small>ETA</small></span>
+                <span><b>{formatCurrency(order.deliveryFee || 0)}</b><small>Delivery</small></span>
+              </div>
               <SmartMap
                 height={260}
                 route
                 points={[
                   { label: order.restaurant?.name || "Restaurant", lat: order.restaurant?.location?.lat || 32.1020, lng: order.restaurant?.location?.lng || 74.8740 },
+                  order.rider?.currentLocation && { label: `Rider: ${order.rider?.user?.name || "Assigned rider"}`, lat: order.rider.currentLocation.lat, lng: order.rider.currentLocation.lng },
                   { label: "Delivery location", lat: order.deliveryLocation?.lat || 32.1020, lng: order.deliveryLocation?.lng || 74.8740 },
-                ]}
+                ].filter(Boolean)}
               />
-              <div style={{ display: "grid", gap: 8, margin: "12px 0" }}>
+              <div className="timeline">
                 {(order.statusTimeline || []).filter((step) => step.status !== "seed").map((step) => (
-                  <div key={`${order._id}-${step.status}-${step.at}`} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #eef2f7", paddingBottom: 6 }}>
+                  <div className="timeline-step" key={`${order._id}-${step.status}-${step.at}`}>
                     <span><b>{step.status}</b> {step.label}</span>
                     <span className="muted">{step.at ? new Date(step.at).toLocaleTimeString() : ""}</span>
                   </div>
@@ -92,15 +95,15 @@ export default function OrderTracking() {
               {["pending", "accepted"].includes(order.status) && (
                 <button className="btn danger" onClick={() => cancel(order)} style={{ marginLeft: 8 }}>Cancel Order</button>
               )}
-              {order.status !== "delivered" && (
-                <div style={{ display: "flex", gap: 10 }}>
-                  <input className="input" placeholder="Enter Delivery OTP" value={otp} onChange={(e) => setOtp(e.target.value)} />
-                  <button className="btn" onClick={() => verify(order._id)}>Verify</button>
+              {["assigned", "picked"].includes(order.status) && (
+                <div className="otp-row">
+                  <span className="badge">Delivery OTP: {order.otp}</span>
+                  <span className="muted">Share this code with your assigned rider at delivery.</span>
                 </div>
               )}
             </div>
           ))}
-          {orders.length === 0 && <div className="card">No orders yet.</div>}
+          {orders.length === 0 && <div className="empty-state"><h3>No orders yet</h3><p>Your active and past orders will appear here.</p></div>}
         </div>
       </div>
     </section>

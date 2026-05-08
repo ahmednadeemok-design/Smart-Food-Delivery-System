@@ -11,7 +11,7 @@ const { successResponse, errorResponse } = require("../utils/apiResponse");
 
 const clampScore = (score) => Math.max(0, Math.min(100, Number(score)));
 const allowedRoles = ["customer", "rider", "restaurant", "admin"];
-const allowedOrderStatuses = ["pending", "accepted", "preparing", "ready", "picked", "delivered", "cancelled"];
+const allowedOrderStatuses = ["pending", "accepted", "preparing", "ready", "assigned", "picked", "delivered", "cancelled", "rejected"];
 
 const logAction = (req, action, targetType, targetId, reason, metadata = {}) =>
   AdminAuditLog.create({ admin: req.user._id, action, targetType, targetId, reason, metadata });
@@ -99,6 +99,9 @@ exports.updateRider = async (req, res) => {
   }
   if (updates.trustScore !== undefined) updates.trustScore = clampScore(updates.trustScore);
   if (updates.isSuspended) updates.isOnline = false;
+  if (updates.isSuspended) updates.availabilityStatus = "suspended";
+  if (updates.approvalStatus === "approved" && updates.isSuspended !== true) updates.availabilityStatus = "approved_offline";
+  if (updates.approvalStatus === "rejected") updates.availabilityStatus = "pending_approval";
 
   const rider = await Rider.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }).populate("user", "name email phone trustScore isBlocked");
   if (!rider) return errorResponse(res, "Rider not found", 404);

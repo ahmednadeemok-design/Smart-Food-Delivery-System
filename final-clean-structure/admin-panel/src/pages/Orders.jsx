@@ -42,7 +42,7 @@ export default function Orders() {
       render: (row) => (
         <div className="action-row">
           <select value={row.status} onChange={(e) => updateOrder(row._id, { status: e.target.value, reason: "Admin forced order status" })}>
-            {["pending", "accepted", "preparing", "ready", "picked", "delivered", "cancelled"].map((item) => <option key={item} value={item}>{item}</option>)}
+            {["pending", "accepted", "preparing", "ready", "assigned", "picked", "delivered", "cancelled", "rejected"].map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
           <select value={row.rider?._id || ""} onChange={(e) => e.target.value && updateOrder(row._id, { rider: e.target.value, reason: "Admin assigned rider" })}>
             <option value="">Assign rider</option>
@@ -62,7 +62,7 @@ export default function Orders() {
         <div className="card form" style={{ marginBottom: 18 }}>
           <select value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
-            {["pending", "accepted", "preparing", "ready", "picked", "delivered", "cancelled"].map((item) => <option key={item} value={item}>{item}</option>)}
+            {["pending", "accepted", "preparing", "ready", "assigned", "picked", "delivered", "cancelled", "rejected"].map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </div>
         <DataTable columns={columns} rows={orders} />

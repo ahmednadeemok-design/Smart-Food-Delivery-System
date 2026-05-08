@@ -15,22 +15,27 @@ export default function Cart() {
 
   return (
     <section className="page">
-      <div className="container">
-        <h1>Your Cart</h1>
-        <div className="grid">
-          {cart.map((item) => <CartItem key={item._id} item={item} onRemove={remove} onQuantityChange={updateQuantity} />)}
+      <div className="container cart-layout">
+        <div>
+          <span className="badge">Your basket</span>
+          <h1>Cart</h1>
+          <p className="muted">Review items, adjust quantities, and continue to Narowal COD checkout.</p>
+          <div className="cart-stack">
+            {cart.map((item) => <CartItem key={item._id} item={item} onRemove={remove} onQuantityChange={updateQuantity} />)}
+            {cart.length === 0 && <div className="empty-state"><h3>Your cart is empty</h3><p>Browse Narowal restaurants and add something delicious.</p><Link className="btn" to="/restaurants">Browse Restaurants</Link></div>}
+          </div>
         </div>
 
-        <div className="card" style={{ marginTop: 18 }}>
-          <h3>Summary</h3>
-          <p>Subtotal: <b>{formatCurrency(totals.subtotal)}</b></p>
-          <p>Delivery Fee: <b>{formatCurrency(totals.deliveryFee)}</b></p>
-          <p>Platform Fee: <b>{formatCurrency(totals.platformFee)}</b></p>
-          <p>Service Fee: <b>{formatCurrency(totals.serviceFee)}</b></p>
-          <p>Total: <b>{formatCurrency(totals.total)}</b></p>
-          <p>Total Calories: <b>{totals.calories} kcal</b></p>
-          {cart.length ? <Link className="btn" to="/checkout">Checkout</Link> : <Link className="btn" to="/restaurants">Browse Restaurants</Link>}
-        </div>
+        <aside className="order-summary-card">
+          <h3>Order Summary</h3>
+          <div className="summary-row"><span>Subtotal</span><b>{formatCurrency(totals.subtotal)}</b></div>
+          <div className="summary-row"><span>Delivery Fee</span><b>{formatCurrency(totals.deliveryFee)}</b></div>
+          <div className="summary-row"><span>Platform Fee</span><b>{formatCurrency(totals.platformFee)}</b></div>
+          <div className="summary-row"><span>Service Fee</span><b>{formatCurrency(totals.serviceFee)}</b></div>
+          <div className="summary-row total"><span>Total</span><b>{formatCurrency(totals.total)}</b></div>
+          <p className="muted">Total Calories: <b>{totals.calories} kcal</b></p>
+          {cart.length ? <Link className="btn summary-btn" to="/checkout">Go to checkout</Link> : <Link className="btn summary-btn" to="/restaurants">Browse Restaurants</Link>}
+        </aside>
       </div>
     </section>
   );

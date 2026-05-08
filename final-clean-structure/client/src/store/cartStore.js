@@ -26,8 +26,10 @@ export const removeFromCart = (id) => {
 };
 
 export const updateCartQuantity = (id, quantity) => {
-  const nextQuantity = Math.max(1, Number(quantity) || 1);
-  const cart = getCart().map((item) => item._id === id ? { ...item, quantity: nextQuantity } : item);
+  const nextQuantity = Number(quantity) || 0;
+  const cart = getCart()
+    .map((item) => item._id === id ? { ...item, quantity: nextQuantity } : item)
+    .filter((item) => item.quantity > 0);
   saveCart(cart);
   return cart;
 };

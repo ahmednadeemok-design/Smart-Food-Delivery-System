@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../store/AuthContext.jsx";
 
+const isValidEmail = (email) => /^\S+@\S+\.\S+$/.test(email.trim());
+
 export default function Login() {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
@@ -11,6 +13,9 @@ export default function Login() {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!isValidEmail(form.email)) return setError("Please enter a valid email address.");
+    if (!form.password) return setError("Password is required.");
+    if (form.password.length < 6) return setError("Password must be at least 6 characters.");
     try { await login(form); navigate("/dashboard"); } catch (err) { setError(err.message); }
   };
 

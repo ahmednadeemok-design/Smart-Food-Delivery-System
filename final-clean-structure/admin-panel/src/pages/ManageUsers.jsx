@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import DataTable from "../components/admin/DataTable.jsx";
 import { deleteAdminUser, getAdminUsers, updateAdminUser } from "../services/adminService.js";
-import { mockUsers } from "../utils/mockData.js";
 import { toast } from "../utils/toast.js";
 
 export default function ManageUsers() {
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState([]);
 
   const loadUsers = () => {
     getAdminUsers().then((res) => {
-      if (res.data.data?.length) setUsers(res.data.data);
+      setUsers(res.data.data || []);
     }).catch((err) => toast.error(err.message));
   };
 

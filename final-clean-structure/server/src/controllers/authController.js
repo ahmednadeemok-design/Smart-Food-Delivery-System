@@ -1,5 +1,9 @@
 const User = require("../models/User");
+const Rider = require("../models/Rider");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
+const { isPakistaniPhone, isNarowalAddress, resolveNarowalArea, clampLocation } = require("../constants/narowal");
+const { dbUnavailableResponse, isDbReady, logAuthError, normalizeAuthPhone } = require("../utils/authUtils");
+const { friendlyValidationMessage } = require("../utils/validationMessages");
 
 const publicUser = (user) => ({
   id: user._id,
@@ -8,30 +12,80 @@ const publicUser = (user) => ({
   phone: user.phone,
   role: user.role,
   avatar: user.avatar,
+  address: user.address,
+  location: user.location,
+  savedAddresses: user.savedAddresses || [],
+  loyalty: user.loyalty,
+  healthProfile: user.healthProfile,
   trustScore: user.trustScore,
   subscription: user.subscription,
   isBlocked: user.isBlocked,
 });
 
 const handleAuthError = (res, error) => {
-  const statusCode = error.name === "ValidationError" || error.code === 11000 ? 400 : 500;
-  const message = error.code === 11000 ? "User already exists" : error.message;
+  logAuthError("controller", error);
+  const statusCode = error.statusCode || (error.name === "ValidationError" || error.code === 11000 ? 400 : 500);
+  const message = error.name === "ValidationError" || error.code === 11000
+    ? friendlyValidationMessage(error)
+    : error.message || "Authentication failed";
   return errorResponse(res, message, statusCode);
 };
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, password, phone, role } = req.body;
+    if (!isDbReady()) return dbUnavailableResponse(res);
+
+    const { name, password, role } = req.body;
+    const phone = normalizeAuthPhone(req.body.phone);
     const email = req.body.email?.trim().toLowerCase();
 
     if (!name || !email || !password || !phone) {
       return errorResponse(res, "Name, email, phone, and password are required", 400);
     }
+    if (password.length < 6) return errorResponse(res, "Password must be at least 6 characters.", 400);
+    if (!isPakistaniPhone(phone)) return errorResponse(res, "Use Pakistani phone format +92XXXXXXXXXX", 400);
+    if (req.body.address && !isNarowalAddress(req.body.address)) {
+      return errorResponse(res, "Delivery address must be inside supported Narowal areas", 400);
+    }
 
     const userExists = await User.findOne({ email });
-    if (userExists) return errorResponse(res, "User already exists", 400);
+    if (userExists) return errorResponse(res, "Email already exists.", 400);
 
-    const user = await User.create({ name, email, password, phone, role });
+    const user = await User.create({
+      name,
+      email,
+      password,
+      phone,
+      role,
+      address: req.body.address || "",
+      location: clampLocation(req.body.location),
+      savedAddresses: req.body.address ? [{
+        label: "Default",
+        address: req.body.address,
+        area: resolveNarowalArea(req.body.address),
+        location: clampLocation(req.body.location),
+        isDefault: true,
+      }] : [],
+    });
+
+    if (user.role === "rider") {
+      await Rider.findOneAndUpdate(
+        { user: user._id },
+        {
+          user: user._id,
+          vehicleType: req.body.vehicleType || "bike",
+          cnic: req.body.cnic || "",
+          bikeNumber: req.body.bikeNumber || "",
+          profileImage: req.body.profileImage || "",
+          phoneVerified: false,
+          currentLocation: clampLocation(req.body.currentLocation || req.body.location),
+          isOnline: false,
+          isActive: true,
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+    }
+
     const token = user.getSignedJwtToken();
 
     return successResponse(res, "User registered successfully", {
@@ -45,17 +99,19 @@ exports.registerUser = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
   try {
+    if (!isDbReady()) return dbUnavailableResponse(res);
+
     const { password } = req.body;
     const email = req.body.email?.trim().toLowerCase();
 
     if (!email || !password) return errorResponse(res, "Please provide email and password", 400);
 
     const user = await User.findOne({ email }).select("+password");
-    if (!user) return errorResponse(res, "Invalid credentials", 401);
+    if (!user) return errorResponse(res, "User not found", 401);
     if (user.isBlocked) return errorResponse(res, user.blockReason || "User account is blocked", 403);
 
     const isMatch = await user.matchPassword(password);
-    if (!isMatch) return errorResponse(res, "Invalid credentials", 401);
+    if (!isMatch) return errorResponse(res, "Invalid password", 401);
 
     const token = user.getSignedJwtToken();
 
@@ -70,4 +126,53 @@ exports.loginUser = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   return successResponse(res, "Profile fetched successfully", publicUser(req.user));
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    if (!isDbReady()) return dbUnavailableResponse(res);
+
+    const email = req.body.email?.trim().toLowerCase();
+    if (!email) return errorResponse(res, "Email is required", 400);
+
+    const user = await User.findOne({ email }).select("+passwordResetToken +passwordResetExpires");
+    if (user) {
+      const token = Math.random().toString(36).slice(2, 10).toUpperCase();
+      user.passwordResetToken = token;
+      user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
+      await user.save({ validateBeforeSave: false });
+    }
+
+    return successResponse(res, "If the email exists, a reset code has been generated", {
+      demoResetCode: process.env.NODE_ENV === "production" ? undefined : user?.passwordResetToken,
+    });
+  } catch (error) {
+    return handleAuthError(res, error);
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    if (!isDbReady()) return dbUnavailableResponse(res);
+
+    const email = req.body.email?.trim().toLowerCase();
+    const { token, password } = req.body;
+    if (!email || !token || !password) return errorResponse(res, "Email, reset code, and new password are required", 400);
+
+    const user = await User.findOne({
+      email,
+      passwordResetToken: String(token).trim().toUpperCase(),
+      passwordResetExpires: { $gt: new Date() },
+    }).select("+password +passwordResetToken +passwordResetExpires");
+    if (!user) return errorResponse(res, "Invalid or expired reset code", 400);
+
+    user.password = password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    return successResponse(res, "Password reset successful");
+  } catch (error) {
+    return handleAuthError(res, error);
+  }
 };

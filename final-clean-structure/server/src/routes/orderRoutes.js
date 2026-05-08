@@ -10,14 +10,17 @@ const {
   updateOrderStatus,
   verifyDelivery,
   cancelMyOrder,
+  getOrderById,
 } = require("../controllers/orderController");
 
 router.post("/", protect, roleMiddleware("customer"), createOrder);
 router.get("/my", protect, getMyOrders);
 router.get("/available", protect, roleMiddleware("rider", "admin"), getAvailableOrders);
+router.get("/:id", protect, getOrderById);
 router.post("/:id/cancel", protect, roleMiddleware("customer"), cancelMyOrder);
 router.post("/:id/accept", protect, roleMiddleware("rider"), acceptOrder);
 router.patch("/:id/status", protect, roleMiddleware("rider", "restaurant", "admin"), updateOrderStatus);
+router.patch("/:id/restaurant-status", protect, roleMiddleware("restaurant", "admin"), updateOrderStatus);
 router.post("/:id/verify-delivery", protect, verifyDelivery);
 
 module.exports = router;

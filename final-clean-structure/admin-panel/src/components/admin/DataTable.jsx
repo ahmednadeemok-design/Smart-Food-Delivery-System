@@ -8,6 +8,13 @@ export default function DataTable({ columns, rows }) {
           </tr>
         </thead>
         <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={columns.length} style={{ color: "var(--muted)", padding: 18, textAlign: "center" }}>
+                No records found.
+              </td>
+            </tr>
+          )}
           {rows.map((row, index) => (
             <tr key={row._id || index}>
               {columns.map((col) => (

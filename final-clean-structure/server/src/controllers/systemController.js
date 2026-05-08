@@ -55,7 +55,7 @@ exports.getSystemHealth = async (req, res) => {
       pendingRestaurants,
       pendingRiders,
       revenuePkr: revenue[0]?.total || 0,
-      narowalZones: ["UET Narowal Campus", "Railway Road", "Zafarwal Road", "Circular Road", "Main Bazaar", "Shakargarh Road", "New Lahore Road", "DHQ Hospital area", "Narowal Railway Station"],
+      narowalZones: ["UET Narowal Campus", "Railway Road", "Zafarwal Road", "Circular Road", "Main Bazaar", "Shakargarh Road", "New Lahore Road", "DHQ Hospital Area", "Narowal Railway Station"],
     },
   });
 };

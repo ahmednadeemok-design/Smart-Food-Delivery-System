@@ -2,7 +2,8 @@ import api from "./api.js";
 
 export const createRestaurant = (payload) => api.post("/restaurants", payload);
 export const getRestaurants = () => api.get("/restaurants");
-export const getMyRestaurants = () => api.get("/restaurants/mine");
+export const getMyRestaurants = () => api.get("/restaurants/my");
+export const updateMyRestaurant = (payload) => api.patch("/restaurants/my", payload);
 export const updateRestaurant = (restaurantId, payload) => api.put(`/restaurants/${restaurantId}`, payload);
 export const addFoodItem = (restaurantId, payload) => api.post(`/restaurants/${restaurantId}/items`, payload);
 export const getFoodItems = (restaurantId) => api.get(`/restaurants/${restaurantId}/items`);

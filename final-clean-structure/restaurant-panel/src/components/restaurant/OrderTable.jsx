@@ -16,6 +16,13 @@ export default function OrderTable({ orders, onStatusChange }) {
           </tr>
         </thead>
         <tbody>
+          {orders.length === 0 && (
+            <tr>
+              <td colSpan="7" style={{ color: "var(--muted)", padding: 18, textAlign: "center" }}>
+                No restaurant orders yet.
+              </td>
+            </tr>
+          )}
           {orders.map((order) => (
             <tr key={order._id}>
               <td>{order._id}</td>
@@ -30,16 +37,20 @@ export default function OrderTable({ orders, onStatusChange }) {
                   <option value="accepted">Accepted</option>
                   <option value="preparing">Preparing</option>
                   <option value="ready">Ready</option>
+                  <option value="assigned">Assigned</option>
                   <option value="picked">Picked</option>
                   <option value="delivered">Delivered</option>
-                  <option value="cancelled">Rejected / Cancelled</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
                 {order.status === "pending" && (
                   <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                     <button className="btn success" onClick={() => onStatusChange(order._id, "accepted")}>Accept</button>
-                    <button className="btn danger" onClick={() => window.confirm("Reject this order?") && onStatusChange(order._id, "cancelled")}>Reject</button>
+                    <button className="btn danger" onClick={() => onStatusChange(order._id, "rejected")}>Reject</button>
                   </div>
                 )}
+                {order.status === "accepted" && <button className="btn" style={{ marginTop: 8 }} onClick={() => onStatusChange(order._id, "preparing")}>Mark Preparing</button>}
+                {order.status === "preparing" && <button className="btn" style={{ marginTop: 8 }} onClick={() => onStatusChange(order._id, "ready")}>Mark Ready</button>}
               </td>
             </tr>
           ))}

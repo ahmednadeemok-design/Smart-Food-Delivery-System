@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import DataTable from "../components/admin/DataTable.jsx";
 import { deleteAdminRestaurant, getAdminRestaurantMenu, getAdminRestaurants, updateAdminRestaurant } from "../services/adminService.js";
-import { mockRestaurants } from "../utils/mockData.js";
 import { toast } from "../utils/toast.js";
 import formatCurrency from "../utils/formatCurrency.js";
 
 export default function ManageRestaurants() {
-  const [restaurants, setRestaurants] = useState(mockRestaurants);
+  const [restaurants, setRestaurants] = useState([]);
   const [menu, setMenu] = useState([]);
 
   const loadRestaurants = () => {
@@ -56,7 +55,9 @@ export default function ManageRestaurants() {
 
   const columns = [
     { key: "name", label: "Restaurant" },
-    { key: "owner", label: "Owner", render: (row) => row.owner?.name || "Owner" },
+    { key: "owner", label: "Owner", render: (row) => `${row.owner?.name || "Owner"} (${row.owner?.email || "no email"})` },
+    { key: "ownerPhone", label: "Owner Phone", render: (row) => row.owner?.phone || "-" },
+    { key: "isOpen", label: "Open", render: (row) => <span className={`badge ${row.isOpen === false ? "warning" : "success"}`}>{row.isOpen === false ? "Closed" : "Open"}</span> },
     { key: "approvalStatus", label: "Approval", render: (row) => <span className={`badge ${row.approvalStatus === "approved" ? "success" : row.approvalStatus === "rejected" ? "danger" : "warning"}`}>{row.approvalStatus || "pending"}</span> },
     { key: "isActive", label: "Active", render: (row) => <span className={`badge ${row.isActive === false ? "danger" : "success"}`}>{row.isActive === false ? "Inactive" : "Active"}</span> },
     { key: "kitchenLoad", label: "Kitchen Load", render: (row) => <span className="badge">{row.kitchenLoad}</span> },

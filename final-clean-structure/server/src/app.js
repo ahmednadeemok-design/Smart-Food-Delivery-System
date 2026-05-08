@@ -24,10 +24,14 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
+  const mongoose = require("mongoose");
   res.status(200).json({
     success: true,
     message: "OK",
     uptime: process.uptime(),
+    data: {
+      database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    },
   });
 });
 

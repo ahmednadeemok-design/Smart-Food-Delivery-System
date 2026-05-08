@@ -14,18 +14,19 @@ export default function MainLayout() {
     <>
       <header className="navbar">
         <div className="container navbar-inner">
-          <Link className="brand" to="/">SmartFood AI</Link>
+          <Link className="brand" to="/">SmartFood Narowal</Link>
 
           <nav className="nav-links">
             <Link to="/restaurants">Restaurants</Link>
             <Link to="/cart">Cart</Link>
             <Link to="/orders">Orders</Link>
+            <Link to="/profile">Profile</Link>
             <Link to="/health">Health</Link>
             <Link to="/subscription">Subscription</Link>
 
             {isAuthenticated ? (
               <>
-                <span className="badge">{user?.role || "customer"}</span>
+                <span className="badge">{user?.loyalty?.badge || "Bronze"} - {user?.loyalty?.points || 0} pts</span>
                 <button className="btn outline" onClick={handleLogout}>Logout</button>
               </>
             ) : (
@@ -44,7 +45,7 @@ export default function MainLayout() {
 
       <footer className="footer">
         <div className="container">
-          Smart Food Delivery System — AI Recommendation, OTP Delivery, Complaint AI, Health Tracking.
+          SmartFood Narowal - COD delivery, OTP verification, rider tracking, loyalty, and local restaurant operations.
         </div>
       </footer>
     </>

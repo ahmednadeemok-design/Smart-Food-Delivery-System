@@ -3,7 +3,7 @@ const successResponse = (res, message = "Success", data = {}, statusCode = 200) 
 };
 
 const errorResponse = (res, message = "Error", statusCode = 500, errors = null) => {
-  return res.status(statusCode).json({ success: false, message, errors });
+  return res.status(statusCode).json({ success: false, message, data: {}, errors });
 };
 
 module.exports = { successResponse, errorResponse };

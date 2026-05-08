@@ -5,6 +5,8 @@ const roleMiddleware = require("../middlewares/roleMiddleware");
 const {
   createRestaurant,
   getMyRestaurants,
+  getMyRestaurantOrders,
+  updateMyRestaurant,
   updateRestaurant,
   getRestaurants,
   getRestaurantById,
@@ -15,6 +17,9 @@ const {
 } = require("../controllers/restaurantController");
 
 router.get("/", getRestaurants);
+router.get("/my", protect, roleMiddleware("restaurant", "admin"), getMyRestaurants);
+router.get("/my/orders", protect, roleMiddleware("restaurant", "admin"), getMyRestaurantOrders);
+router.patch("/my", protect, roleMiddleware("restaurant", "admin"), updateMyRestaurant);
 router.get("/mine", protect, roleMiddleware("restaurant", "admin"), getMyRestaurants);
 router.post("/", protect, roleMiddleware("restaurant", "admin"), createRestaurant);
 router.put("/:id", protect, roleMiddleware("restaurant", "admin"), updateRestaurant);

@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import DataTable from "../components/admin/DataTable.jsx";
 import { getAdminRiders, updateAdminRider } from "../services/adminService.js";
-import { mockRiders } from "../utils/mockData.js";
 import { toast } from "../utils/toast.js";
 
 export default function ManageRiders() {
-  const [riders, setRiders] = useState(mockRiders);
+  const [riders, setRiders] = useState([]);
 
   const loadRiders = () => {
     getAdminRiders().then((res) => {
@@ -14,7 +13,11 @@ export default function ManageRiders() {
           _id: r._id,
           name: r.user?.name || "Rider",
           email: r.user?.email || "",
+          phone: r.user?.phone || "",
+          cnic: r.cnic || "",
+          bikeNumber: r.bikeNumber || "",
           isOnline: r.isOnline,
+          availabilityStatus: r.availabilityStatus || "pending_approval",
           approvalStatus: r.approvalStatus || "pending",
           isActive: r.isActive !== false,
           isSuspended: r.isSuspended,
@@ -40,8 +43,11 @@ export default function ManageRiders() {
 
   const columns = [
     { key: "name", label: "Rider" },
+    { key: "email", label: "Email" },
+    { key: "phone", label: "Phone" },
+    { key: "bikeNumber", label: "Vehicle" },
     { key: "approvalStatus", label: "Approval", render: (row) => <span className={`badge ${row.approvalStatus === "approved" ? "success" : row.approvalStatus === "rejected" ? "danger" : "warning"}`}>{row.approvalStatus}</span> },
-    { key: "isOnline", label: "Status", render: (row) => <span className={`badge ${row.isOnline ? "success" : "warning"}`}>{row.isOnline ? "Online" : "Offline"}</span> },
+    { key: "availabilityStatus", label: "Status", render: (row) => <span className={`badge ${row.isOnline ? "success" : "warning"}`}>{row.availabilityStatus}</span> },
     { key: "activeOrders", label: "Active Orders" },
     { key: "workloadScore", label: "Workload" },
     { key: "trustScore", label: "Trust Score", render: (row) => `${row.trustScore}%` },

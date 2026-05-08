@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "seed:narowal": "node src/seed/narowalSeed.js"
+    "seed:narowal": "node src/seed/narowalSeed.js",
+    "reset-data": "node scripts/resetUsersAndData.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
