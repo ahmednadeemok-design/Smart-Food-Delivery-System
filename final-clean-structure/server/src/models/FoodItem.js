@@ -10,6 +10,7 @@ const foodItemSchema = new mongoose.Schema(
     category: String,
     calories: { type: Number, default: 0 },
     tags: [String],
+    preparationTime: { type: Number, default: 15 },
     addOns: [{ name: String, price: { type: Number, default: 0 } }],
     options: [{ name: String, values: [String], required: { type: Boolean, default: false } }],
     isFeatured: { type: Boolean, default: false },
@@ -17,6 +18,7 @@ const foodItemSchema = new mongoose.Schema(
     isAvailable: { type: Boolean, default: true },
     tasteScore: { type: Number, default: 100 },
     complaintCount: { type: Number, default: 0 },
+    isOutOfStock: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

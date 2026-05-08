@@ -13,6 +13,7 @@ const Subscription = require("../models/Subscription");
 const TrustScore = require("../models/TrustScore");
 const DeliveryVerification = require("../models/DeliveryVerification");
 const AdminAuditLog = require("../models/AdminAuditLog");
+const { calculateOrderFinancials } = require("../services/financeService");
 
 // approximate coordinates for demo
 const NAROWAL_CENTER = { lat: 32.1020, lng: 74.8740 };
@@ -339,6 +340,9 @@ const seed = async () => {
       vehicleType: "bike",
       cnic: "35401-1234567-1",
       bikeNumber: "NRL-ALI-125",
+      drivingLicence: "DL-NRL-ALI",
+      paymentAccountType: "JazzCash",
+      paymentAccountNumber: "+923000000104",
       phoneVerified: true,
       currentLocation: { lat: 32.0990, lng: 74.8678 },
       isOnline: true,
@@ -361,6 +365,9 @@ const seed = async () => {
       vehicleType: "bike",
       cnic: "35401-7654321-2",
       bikeNumber: "NRL-USMAN-70",
+      drivingLicence: "DL-NRL-USMAN",
+      paymentAccountType: "EasyPaisa",
+      paymentAccountNumber: "+923000000105",
       phoneVerified: true,
       currentLocation: { lat: 32.1135, lng: 74.8734 },
       isOnline: true,
@@ -499,7 +506,8 @@ const seed = async () => {
     const deliveryFee = Math.round(70 + demoOrder.distanceKm * 18);
     const platformFee = Math.max(25, Math.round(subtotal * 0.03));
     const serviceFee = 15;
-    const totalAmount = subtotal + deliveryFee + platformFee + serviceFee;
+    const financials = calculateOrderFinancials({ subtotal, deliveryFee, platformFee, serviceFee, discountAmount: 0, taxAmount: 0 });
+    const totalAmount = financials.totalAmount;
 
     const order = await Order.create({
         customer: demoOrder.customer._id,
@@ -510,11 +518,20 @@ const seed = async () => {
         deliveryLocation: demoOrder.deliveryLocation,
         status: demoOrder.status,
         paymentMethod: "cod",
-        paymentStatus: demoOrder.status === "delivered" ? "paid" : "pending",
+        paymentStatus: demoOrder.status === "delivered" ? "cash_collected" : "pending",
         subtotal,
         deliveryFee,
         platformFee,
         serviceFee,
+        discountAmount: 0,
+        taxAmount: 0,
+        platformCommission: financials.platformCommission,
+        restaurantRevenue: financials.restaurantRevenue,
+        riderEarning: financials.riderEarning,
+        platformEarning: financials.platformEarning,
+        cashCollectedAmount: demoOrder.status === "delivered" ? totalAmount : 0,
+        financialSettled: demoOrder.status === "delivered",
+        settledAt: demoOrder.status === "delivered" ? new Date(Date.now() - 20 * 60 * 1000) : undefined,
         totalAmount,
         otp: "123456",
         emergencyMode: false,
@@ -533,7 +550,18 @@ const seed = async () => {
         user: demoOrder.customer._id,
         amount: totalAmount,
         method: "cod",
-        status: demoOrder.status === "delivered" ? "paid" : "pending",
+        status: demoOrder.status === "delivered" ? "cash_collected" : "pending",
+        restaurant: demoOrder.restaurant._id,
+        rider: demoOrder.rider?._id,
+        subtotal,
+        deliveryFee,
+        platformFee,
+        serviceFee,
+        platformCommission: financials.platformCommission,
+        restaurantRevenue: financials.restaurantRevenue,
+        riderEarning: financials.riderEarning,
+        cashCollectedAmount: demoOrder.status === "delivered" ? totalAmount : 0,
+        collectedAt: demoOrder.status === "delivered" ? new Date(Date.now() - 20 * 60 * 1000) : undefined,
         transactionId: `COD-${String(order._id).slice(-6).toUpperCase()}`,
       });
 
@@ -541,6 +569,27 @@ const seed = async () => {
       demoOrder.rider.activeOrders.push(order._id);
       demoOrder.rider.availabilityStatus = "busy";
       await demoOrder.rider.save();
+    }
+    if (demoOrder.rider && demoOrder.status === "delivered") {
+      demoOrder.rider.completedDeliveries += 1;
+      demoOrder.rider.earnings += financials.riderEarning;
+      demoOrder.rider.dailyEarnings += financials.riderEarning;
+      demoOrder.rider.weeklyEarnings += financials.riderEarning;
+      demoOrder.rider.walletBalance += financials.riderEarning;
+      demoOrder.rider.pendingPayout += financials.riderEarning;
+      demoOrder.rider.totalLifetimeEarnings += financials.riderEarning;
+      demoOrder.rider.codCollectedToday += totalAmount;
+      await demoOrder.rider.save();
+      await Restaurant.findByIdAndUpdate(demoOrder.restaurant._id, {
+        $inc: {
+          totalSales: totalAmount,
+          totalRevenue: financials.restaurantRevenue,
+          pendingSettlement: financials.restaurantRevenue,
+          completedSales: financials.restaurantRevenue,
+          platformCommission: financials.platformCommission,
+          completedOrders: 1,
+        },
+      });
     }
 
     await Review.create({

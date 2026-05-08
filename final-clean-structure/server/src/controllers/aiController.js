@@ -179,3 +179,28 @@ exports.goalFilter = async (req, res) => {
     return successResponse(res, "Goal-based food filtered", filtered.slice(0, 10));
   }
 };
+
+exports.calorieSummary = async (req, res) => {
+  const items = Array.isArray(req.body.items) ? req.body.items : [];
+  try {
+    const aiResponse = await callAIService("/health/calories", {
+      items: items.map((item) => ({
+        id: String(item.id || item._id || item.foodItem || item.name),
+        name: item.name || "Food item",
+        category: item.category || "",
+        tags: item.tags || [],
+        calories: Number(item.calories || 0),
+        taste_score: Number(item.tasteScore || item.taste_score || 100),
+        price: Number(item.price || 0),
+      })),
+    });
+    return successResponse(res, "Calorie summary calculated by AI service", aiResponse.data);
+  } catch {
+    const totalCalories = items.reduce((sum, item) => sum + Number(item.calories || 0) * Number(item.quantity || 1), 0);
+    return successResponse(res, "Calorie summary calculated", {
+      total_calories: totalCalories,
+      items_count: items.length,
+      suggestion: totalCalories > 900 ? "Consider a lighter side or share this meal." : "This fits a balanced Narowal meal plan.",
+    });
+  }
+};

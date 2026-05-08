@@ -9,6 +9,9 @@ import MenuManagement from "./pages/MenuManagement.jsx";
 import KitchenLoad from "./pages/KitchenLoad.jsx";
 import AccuracyReports from "./pages/AccuracyReports.jsx";
 import QualityAudit from "./pages/QualityAudit.jsx";
+import Reports from "./pages/Reports.jsx";
+import Campaigns from "./pages/Campaigns.jsx";
+import Support from "./pages/Support.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
@@ -26,6 +29,9 @@ export default function App() {
           <Route path="/kitchen-load" element={<KitchenLoad />} />
           <Route path="/accuracy-reports" element={<AccuracyReports />} />
           <Route path="/quality-audit" element={<QualityAudit />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/support" element={<Support />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

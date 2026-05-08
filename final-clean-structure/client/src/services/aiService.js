@@ -9,3 +9,4 @@ export const predictOrderAccuracy = (payload) => api.post("/ai/order-accuracy", 
 export const detectComplaintIntent = (payload) => api.post("/ai/complaint-intent", payload);
 export const getRefundDecision = (payload) => api.post("/ai/refund-decision", payload);
 export const filterFoodByGoal = (payload) => api.post("/ai/goal-filter", payload);
+export const getCalorieSummary = (payload) => api.post("/ai/calories", payload);

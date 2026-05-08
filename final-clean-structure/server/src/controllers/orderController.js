@@ -6,7 +6,9 @@ const Payment = require("../models/Payment");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { createDeliveryOTP, verifyOTP } = require("../services/otpService");
 const { getDeliveryCostBreakdown } = require("../services/deliveryCostService");
+const { calculateOrderFinancials, settleCodDelivery } = require("../services/financeService");
 const { calculateCouponDiscount, clampLocation, isNarowalAddress } = require("../constants/narowal");
+const { sendOrderUpdate } = require("../utils/emailService");
 
 const emitOrderUpdate = (req, order, event = "order-status-updated") => {
   const io = req.app.get("io");
@@ -18,6 +20,8 @@ const emitOrderUpdate = (req, order, event = "order-status-updated") => {
 exports.createOrder = async (req, res) => {
   try {
     const { restaurant, items, deliveryAddress, deliveryLocation, paymentMethod = "cod", emergencyMode, couponCode } = req.body;
+    const supportedPayments = ["cod", "jazzcash", "easypaisa", "card", "stripe", "wallet"];
+    if (!supportedPayments.includes(paymentMethod)) return errorResponse(res, "Unsupported payment method", 400);
 
     if (!restaurant || !Array.isArray(items) || items.length === 0 || !deliveryAddress) {
       return errorResponse(res, "Restaurant, items, and delivery address are required", 400);
@@ -28,6 +32,14 @@ exports.createOrder = async (req, res) => {
     if (!isNarowalAddress(deliveryAddress)) {
       return errorResponse(res, "SmartFood only delivers to supported Narowal city areas", 400);
     }
+    const restaurantDoc = await Restaurant.findById(restaurant);
+    if (!restaurantDoc) return errorResponse(res, "Restaurant not found", 404);
+    if (restaurantDoc.approvalStatus && restaurantDoc.approvalStatus !== "approved") {
+      return errorResponse(res, "This restaurant is not accepting orders yet", 400);
+    }
+    if (restaurantDoc.isActive === false || restaurantDoc.isOpen === false) {
+      return errorResponse(res, "This restaurant is currently closed", 400);
+    }
 
     const foodIds = items.map((i) => i.foodItem);
     const foodItems = await FoodItem.find({ _id: { $in: foodIds } });
@@ -35,7 +47,7 @@ exports.createOrder = async (req, res) => {
     if (foodItems.some((item) => String(item.restaurant) !== String(restaurant))) {
       return errorResponse(res, "All items must belong to the selected restaurant", 400);
     }
-    if (foodItems.some((item) => item.isAvailable === false)) {
+    if (foodItems.some((item) => item.isAvailable === false || item.isOutOfStock === true)) {
       return errorResponse(res, "One or more selected items are currently unavailable", 400);
     }
 
@@ -62,7 +74,17 @@ exports.createOrder = async (req, res) => {
     const coupon = calculateCouponDiscount({ code: couponCode, subtotal, deliveryAddress });
     if (couponCode && !coupon.discount) return errorResponse(res, coupon.message || "Coupon could not be applied", 400);
     const loyaltyPointsRedeemed = Math.min(Number(req.body.loyaltyPointsRedeemed || 0), req.user.loyalty?.points || 0, Math.floor(subtotal * 0.15));
-    const totalAmount = Math.max(0, subtotal + cost.total + platformFee + serviceFee - coupon.discount - loyaltyPointsRedeemed);
+    const taxAmount = 0;
+    const discountAmount = coupon.discount + loyaltyPointsRedeemed;
+    const financials = calculateOrderFinancials({
+      subtotal,
+      deliveryFee: cost.total,
+      platformFee,
+      serviceFee,
+      discountAmount,
+      taxAmount,
+    });
+    const totalAmount = financials.totalAmount;
     const loyaltyPointsEarned = Math.floor(totalAmount / 100);
 
     const order = await Order.create({
@@ -72,11 +94,18 @@ exports.createOrder = async (req, res) => {
       deliveryAddress,
       deliveryLocation: clampLocation(deliveryLocation),
       paymentMethod,
+      paymentStatus: paymentMethod === "cod" ? "pending" : "paid_online",
       subtotal,
       deliveryFee: cost.total,
       platformFee,
       serviceFee,
       discount: coupon.discount,
+      discountAmount,
+      taxAmount,
+      platformCommission: financials.platformCommission,
+      restaurantRevenue: financials.restaurantRevenue,
+      riderEarning: financials.riderEarning,
+      platformEarning: financials.platformEarning,
       couponCode: coupon.code,
       loyaltyPointsEarned,
       loyaltyPointsRedeemed,
@@ -86,13 +115,25 @@ exports.createOrder = async (req, res) => {
       estimatedDeliveryTime: emergencyMode ? 15 : 35,
       statusTimeline: [{ status: "pending", label: "Order placed by customer" }],
     });
+    order.deliveryOtp = order.otp;
+    await order.save({ validateBeforeSave: false });
 
     await Payment.create({
       order: order._id,
       user: req.user._id,
       amount: totalAmount,
       method: paymentMethod || "cod",
-      status: paymentMethod === "cod" ? "pending" : "paid",
+      status: paymentMethod === "cod" ? "pending" : "paid_online",
+      restaurant,
+      subtotal: financials.subtotal,
+      deliveryFee: financials.deliveryFee,
+      platformFee: financials.platformFee,
+      serviceFee: financials.serviceFee,
+      discountAmount: financials.discountAmount,
+      taxAmount: financials.taxAmount,
+      platformCommission: financials.platformCommission,
+      restaurantRevenue: financials.restaurantRevenue,
+      riderEarning: financials.riderEarning,
     });
 
     req.user.loyalty = req.user.loyalty || {};
@@ -104,6 +145,7 @@ exports.createOrder = async (req, res) => {
 
     await FoodItem.updateMany({ _id: { $in: foodIds } }, { $inc: { soldCount: 1 } });
     emitOrderUpdate(req, order, "order-created");
+    await sendOrderUpdate({ ...order.toObject(), customer: req.user }, "Order placed", "Your SmartFood Narowal order has been placed successfully.");
 
     return successResponse(res, "Order created successfully", order, 201);
   } catch (error) {
@@ -166,7 +208,8 @@ exports.cancelMyOrder = async (req, res) => {
   }
 
   order.status = "cancelled";
-  order.paymentStatus = order.paymentMethod === "cod" ? "failed" : "refunded";
+  order.paymentStatus = order.paymentMethod === "cod" ? "failed" : "refund_pending";
+  order.refundStatus = order.paymentMethod === "cod" ? "none" : "requested";
   order.statusTimeline.push({ status: "cancelled", label: req.body.reason || "Cancelled by customer before preparation", at: new Date() });
   await order.save();
   emitOrderUpdate(req, order);
@@ -202,24 +245,32 @@ exports.updateOrderStatus = async (req, res) => {
     if (order.status !== "assigned") return errorResponse(res, "Only assigned orders can be picked", 400);
   }
   order.status = req.body.status;
+  if (req.body.status === "picked") order.pickedAt = new Date();
   order.statusTimeline.push({
     status: req.body.status,
     label: req.body.label || `Order marked ${req.body.status}`,
     at: new Date(),
   });
-  if (req.body.status === "rejected") order.paymentStatus = "failed";
+  if (req.body.status === "rejected") {
+    order.paymentStatus = "failed";
+    await Restaurant.findByIdAndUpdate(order.restaurant, { $inc: { cancelledOrders: 1 } });
+  }
   if (req.body.status === "delivered") order.deliveredAt = new Date();
   await order.save();
   if (req.body.status === "delivered" && order.rider) {
     await Rider.findByIdAndUpdate(order.rider, { $pull: { activeOrders: order._id }, $inc: { completedDeliveries: 1 } });
   }
   emitOrderUpdate(req, order);
+  const populated = await Order.findById(order._id).populate("customer", "name email").populate("restaurant", "name");
+  await sendOrderUpdate(populated, `Order ${order.status}`, `Your SmartFood Narowal order is now ${order.status}.`);
   return successResponse(res, "Order status updated", order);
 };
 
 exports.getAvailableOrders = async (req, res) => {
+  const rider = await Rider.findOne({ user: req.user._id });
   const orders = await Order.find({
     status: "ready",
+    ...(rider ? { rejectedByRiders: { $ne: rider._id } } : {}),
     $or: [{ rider: { $exists: false } }, { rider: null }],
   }).populate("restaurant customer", "name address location phone").sort({ emergencyMode: -1, createdAt: 1 });
 
@@ -237,9 +288,9 @@ exports.acceptOrder = async (req, res) => {
   if (busyOrder) return errorResponse(res, "Complete your active delivery before accepting another order.", 400);
 
   const order = await Order.findOneAndUpdate(
-    { _id: req.params.id || req.params.orderId, status: "ready", $or: [{ rider: { $exists: false } }, { rider: null }] },
+    { _id: req.params.id || req.params.orderId, status: "ready", rejectedByRiders: { $ne: rider._id }, $or: [{ rider: { $exists: false } }, { rider: null }] },
     {
-      $set: { rider: rider._id, status: "assigned" },
+      $set: { rider: rider._id, status: "assigned", assignedAt: new Date() },
       $push: { statusTimeline: { status: "assigned", label: "Delivery assigned to rider", at: new Date() } },
     },
     { new: true }
@@ -249,11 +300,14 @@ exports.acceptOrder = async (req, res) => {
 
   if (!rider.activeOrders.some((id) => String(id) === String(order._id))) {
     rider.activeOrders.push(order._id);
+    rider.activeOrder = order._id;
     rider.availabilityStatus = "busy";
     await rider.save();
   }
 
   emitOrderUpdate(req, order);
+  const assignedOrder = await Order.findById(order._id).populate("customer", "name email").populate("restaurant", "name");
+  await sendOrderUpdate(assignedOrder, "Rider assigned", "A rider has accepted your SmartFood Narowal delivery.");
   return successResponse(res, "Order accepted successfully", order);
 };
 
@@ -270,19 +324,40 @@ exports.verifyDelivery = async (req, res) => {
   if (!verifyOTP(order.otp, req.body.otp)) return errorResponse(res, "Invalid delivery OTP", 400);
 
   order.status = "delivered";
+  order.otpVerified = true;
   order.deliveredAt = new Date();
   order.statusTimeline.push({ status: "delivered", label: "Delivery completed with OTP", at: new Date() });
+  await settleCodDelivery(order);
   await order.save();
-  if (order.rider) {
-    const riderPayout = Math.max(80, Math.round(Number(order.deliveryFee || 0) * 0.8));
-    await Rider.findByIdAndUpdate(order.rider, {
-      $pull: { activeOrders: order._id },
-      $inc: { completedDeliveries: 1, earnings: riderPayout, dailyEarnings: riderPayout, weeklyEarnings: riderPayout },
-    });
-  }
-  await Rider.findByIdAndUpdate(order.rider, { availabilityStatus: "online", isOnline: true });
-  await Restaurant.findByIdAndUpdate(order.restaurant, { $inc: { totalSales: order.totalAmount || 0, completedOrders: 1 } });
   emitOrderUpdate(req, order);
+  const deliveredOrder = await Order.findById(order._id).populate("customer", "name email").populate("restaurant", "name");
+  await sendOrderUpdate(deliveredOrder, "Order delivered", "Your SmartFood Narowal order has been delivered. Thank you!");
 
   return successResponse(res, "Delivery verified successfully", order);
+};
+
+exports.rejectOrder = async (req, res) => {
+  const rider = await Rider.findOne({ user: req.user._id });
+  if (!rider) return errorResponse(res, "Complete rider profile before skipping orders.", 400);
+  const order = await Order.findOne({ _id: req.params.orderId, status: "ready", $or: [{ rider: { $exists: false } }, { rider: null }] });
+  if (!order) return errorResponse(res, "Order is no longer available", 400);
+
+  order.rejectedByRiders = order.rejectedByRiders || [];
+  if (!order.rejectedByRiders.some((id) => String(id) === String(rider._id))) {
+    order.rejectedByRiders.push(rider._id);
+  }
+  order.statusTimeline.push({ status: "ready", label: "Delivery skipped by rider", at: new Date() });
+  await order.save({ validateBeforeSave: false });
+
+  rider.rejectedOrders = rider.rejectedOrders || [];
+  rider.rejectedOrders.push(order._id);
+  rider.acceptanceRate = Math.max(0, Number(rider.acceptanceRate || 100) - 2);
+  await rider.save();
+
+  return successResponse(res, "Order skipped", { orderId: order._id });
+};
+
+exports.markPicked = async (req, res) => {
+  req.body.status = "picked";
+  return exports.updateOrderStatus(req, res);
 };

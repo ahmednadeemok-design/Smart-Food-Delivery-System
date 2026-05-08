@@ -1,0 +1,6 @@
+<svg width="720" height="190" viewBox="0 0 720 190" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="720" height="190" rx="32" fill="#FFFFFF"/>
+  <image href="logo.svg" x="8" y="8" width="520" height="146"/>
+  <rect x="184" y="132" width="250" height="36" rx="18" fill="#FFF2EA"/>
+  <text x="207" y="157" fill="#BD3517" font-family="Inter, Poppins, Arial, sans-serif" font-size="20" font-weight="900">Restaurant Partner</text>
+</svg>

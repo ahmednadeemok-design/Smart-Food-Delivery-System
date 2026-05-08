@@ -1,56 +1,63 @@
 import formatCurrency from "../../utils/formatCurrency.js";
 
 export default function OrderTable({ orders, onStatusChange }) {
+  const nextActions = {
+    pending: [
+      { status: "accepted", label: "Accept", className: "btn success" },
+      { status: "rejected", label: "Reject", className: "btn danger" },
+    ],
+    accepted: [{ status: "preparing", label: "Mark Preparing", className: "btn" }],
+    preparing: [{ status: "ready", label: "Mark Ready", className: "btn" }],
+  };
+
   return (
-    <div className="card" style={{ overflowX: "auto" }}>
+    <div className="card order-list">
       <table className="table">
         <thead>
           <tr>
             <th>Order</th>
             <th>Customer</th>
             <th>Items</th>
+            <th>Payment</th>
             <th>Amount</th>
             <th>Status</th>
-            <th>Priority</th>
+            <th>Rider</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
           {orders.length === 0 && (
             <tr>
-              <td colSpan="7" style={{ color: "var(--muted)", padding: 18, textAlign: "center" }}>
+              <td colSpan="8" style={{ color: "var(--muted)", padding: 18, textAlign: "center" }}>
                 No restaurant orders yet.
               </td>
             </tr>
           )}
           {orders.map((order) => (
             <tr key={order._id}>
-              <td>{order._id}</td>
-              <td>{order.customer}</td>
+              <td>
+                <b>#{String(order._id).slice(-6).toUpperCase()}</b>
+                <div className="muted">{order.priority}</div>
+              </td>
+              <td>
+                <b>{order.customer}</b>
+                <div className="muted">{order.phone || "Phone hidden"}</div>
+                <div className="muted">{order.address}</div>
+              </td>
               <td>{order.items}</td>
+              <td><span className="badge">{order.paymentMethod}</span></td>
               <td>{formatCurrency(order.amount)}</td>
               <td><span className="badge">{order.status}</span></td>
-              <td>{order.priority}</td>
+              <td>{order.rider || "Not assigned"}</td>
               <td>
-                <select value={order.status} onChange={(e) => onStatusChange(order._id, e.target.value)}>
-                  <option value="pending">Pending</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="preparing">Preparing</option>
-                  <option value="ready">Ready</option>
-                  <option value="assigned">Assigned</option>
-                  <option value="picked">Picked</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                {order.status === "pending" && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button className="btn success" onClick={() => onStatusChange(order._id, "accepted")}>Accept</button>
-                    <button className="btn danger" onClick={() => onStatusChange(order._id, "rejected")}>Reject</button>
-                  </div>
-                )}
-                {order.status === "accepted" && <button className="btn" style={{ marginTop: 8 }} onClick={() => onStatusChange(order._id, "preparing")}>Mark Preparing</button>}
-                {order.status === "preparing" && <button className="btn" style={{ marginTop: 8 }} onClick={() => onStatusChange(order._id, "ready")}>Mark Ready</button>}
+                <div className="action-row" style={{ display: "flex", gap: 8 }}>
+                  {(nextActions[order.status] || []).map((action) => (
+                    <button key={action.status} className={action.className} onClick={() => onStatusChange(order._id, action.status)}>
+                      {action.label}
+                    </button>
+                  ))}
+                  {!nextActions[order.status] && <span className="muted">No restaurant action</span>}
+                </div>
               </td>
             </tr>
           ))}

@@ -105,6 +105,9 @@ export default function Checkout() {
           />
           <select value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>
             <option value="cod">Cash on Delivery</option>
+            <option value="jazzcash" disabled>JazzCash (coming soon)</option>
+            <option value="easypaisa" disabled>EasyPaisa (coming soon)</option>
+            <option value="card" disabled>Card (coming soon)</option>
           </select>
           <input className="input" placeholder="Coupon code: NAROWAL50, UET100, BAZAAR10" value={form.couponCode} onChange={(e) => setForm({ ...form, couponCode: e.target.value.toUpperCase() })} />
           <input className="input" type="number" min="0" max={user?.loyalty?.points || 0} placeholder={`Redeem points (${user?.loyalty?.points || 0} available)`} value={form.loyaltyPointsRedeemed} onChange={(e) => setForm({ ...form, loyaltyPointsRedeemed: e.target.value })} />
@@ -120,6 +123,8 @@ export default function Checkout() {
           <div className="summary-row"><span>Delivery estimate</span><b>{formatCurrency(totals.deliveryFee)}</b></div>
           <div className="summary-row"><span>Platform fee</span><b>{formatCurrency(totals.platformFee)}</b></div>
           <div className="summary-row"><span>Service fee</span><b>{formatCurrency(totals.serviceFee)}</b></div>
+          <div className="summary-row"><span>Discount / points</span><b>{formatCurrency(Number(form.loyaltyPointsRedeemed || 0))}</b></div>
+          <div className="summary-row"><span>Tax</span><b>{formatCurrency(0)}</b></div>
           <div className="summary-row total"><span>Total estimate</span><b>{formatCurrency(totals.total)}</b></div>
           <p className="muted">Payment method: Cash on Delivery</p>
           <p className="muted">Loyalty: {user?.loyalty?.points || 0} points available</p>

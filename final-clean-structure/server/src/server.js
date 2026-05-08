@@ -29,6 +29,15 @@ const server = httpServer.listen(PORT, HOST, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
 
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`Port ${PORT} is already in use. Stop the existing server or set a different PORT.`);
+    process.exit(1);
+  }
+  console.error(`Server error: ${err.message}`);
+  process.exit(1);
+});
+
 process.on("unhandledRejection", (err) => {
   console.error(`Unhandled Rejection: ${err.message}`);
   server.close(() => process.exit(1));

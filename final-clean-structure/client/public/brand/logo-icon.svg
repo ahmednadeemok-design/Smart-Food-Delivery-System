@@ -1,0 +1,14 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SmartFood Narowal logo icon">
+  <defs>
+    <linearGradient id="g" x1="15" y1="12" x2="116" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF8A1F"/>
+      <stop offset=".54" stop-color="#F24A1D"/>
+      <stop offset="1" stop-color="#C81E12"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#g)"/>
+  <path d="M64 25C41.2 25 26 40.2 26 60.8c0 27.4 30.5 46.4 36 49.6a4.2 4.2 0 0 0 4 0c5.5-3.2 36-22.2 36-49.6C102 40.2 86.8 25 64 25Z" fill="white"/>
+  <path d="M43.6 62.8c4-13 12.8-19.5 26.5-19.5 9.3 0 16.3 3 21.1 8.9" stroke="#F24A1D" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M42 74.4h45.8a6.2 6.2 0 1 1 0 12.4H42a6.2 6.2 0 1 1 0-12.4Z" fill="#F24A1D"/>
+  <circle cx="64" cy="59" r="8.5" fill="#FF8A1F"/>
+</svg>

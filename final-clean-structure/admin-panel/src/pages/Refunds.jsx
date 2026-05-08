@@ -33,7 +33,11 @@ export default function Refunds() {
     { key: "user", label: "User", render: (row) => row.user?.name || "User" },
     { key: "amount", label: "Amount", render: (row) => formatCurrency(row.amount) },
     { key: "method", label: "Method" },
+    { key: "restaurantRevenue", label: "Restaurant Net", render: (row) => formatCurrency(row.restaurantRevenue || 0) },
+    { key: "riderEarning", label: "Rider", render: (row) => formatCurrency(row.riderEarning || 0) },
+    { key: "platformCommission", label: "Commission", render: (row) => formatCurrency(row.platformCommission || 0) },
     { key: "status", label: "Status", render: (row) => <span className={`badge ${row.status === "refunded" ? "warning" : "success"}`}>{row.status}</span> },
+    { key: "refundStatus", label: "Refund", render: (row) => <span className="badge">{row.refundStatus || "none"}</span> },
     { key: "refundReason", label: "Reason", render: (row) => row.refundReason || "-" },
     {
       key: "actions",

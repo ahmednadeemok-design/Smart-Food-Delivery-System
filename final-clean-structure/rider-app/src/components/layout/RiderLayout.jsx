@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext.jsx";
 
 export default function RiderLayout() {
@@ -14,21 +14,25 @@ export default function RiderLayout() {
     <>
       <header className="navbar">
         <div className="container navbar-inner">
-          <Link className="brand" to="/dashboard">SmartFood Rider</Link>
+          <Link className="brand" to="/dashboard">
+            <img className="brand-logo" src="/brand/rider-icon.svg" alt="" />
+            <span>SmartFood Rider</span>
+          </Link>
           <nav className="nav-links">
             {isAuthenticated ? (
               <>
-                <Link to="/dashboard">Dashboard</Link>
-                <Link to="/available-orders">Orders</Link>
-                <Link to="/active-delivery">Active</Link>
-                <Link to="/multi-order-route">Route</Link>
-                <Link to="/delivery-verification">OTP</Link>
+                <NavLink to="/dashboard">Dashboard</NavLink>
+                <NavLink to="/available-orders">Orders</NavLink>
+                <NavLink to="/active-delivery">Active</NavLink>
+                <NavLink to="/history">History</NavLink>
+                <NavLink to="/multi-order-route">Route</NavLink>
+                <NavLink to="/delivery-verification">OTP</NavLink>
                 <span className="badge"><span className="status-dot" />{user?.role || "rider"}</span>
                 <button className="btn outline" onClick={handleLogout}>Logout</button>
               </>
             ) : (
               <>
-                <Link to="/login">Login</Link>
+                <NavLink to="/login">Login</NavLink>
                 <Link className="btn" to="/register">Register</Link>
               </>
             )}

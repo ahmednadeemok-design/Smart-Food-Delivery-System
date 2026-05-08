@@ -6,10 +6,15 @@ import { toast } from "../utils/toast.js";
 const toTableOrder = (order) => ({
   _id: order._id,
   customer: order.customer?.name || "Customer",
+  phone: order.customer?.phone || "",
+  address: order.deliveryAddress || "Narowal delivery address",
+  rider: order.rider?.user?.name || "",
   items: order.items?.map((item) => `${item.name} x${item.quantity}`).join(", ") || "Items",
   amount: order.totalAmount,
+  paymentMethod: (order.paymentMethod || "cod").toUpperCase(),
   status: order.status,
   priority: order.emergencyMode ? "Emergency" : "Normal",
+  createdAt: order.createdAt,
 });
 
 export default function Orders() {

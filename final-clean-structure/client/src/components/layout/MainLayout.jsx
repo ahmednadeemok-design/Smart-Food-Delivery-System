@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext.jsx";
 
 export default function MainLayout() {
@@ -14,15 +14,18 @@ export default function MainLayout() {
     <>
       <header className="navbar">
         <div className="container navbar-inner">
-          <Link className="brand" to="/">SmartFood Narowal</Link>
+          <Link className="brand" to="/">
+            <img className="brand-logo" src="/brand/favicon.svg" alt="" />
+            <span>SmartFood Narowal</span>
+          </Link>
 
           <nav className="nav-links">
-            <Link to="/restaurants">Restaurants</Link>
-            <Link to="/cart">Cart</Link>
-            <Link to="/orders">Orders</Link>
-            <Link to="/profile">Profile</Link>
-            <Link to="/health">Health</Link>
-            <Link to="/subscription">Subscription</Link>
+            <NavLink to="/restaurants">Restaurants</NavLink>
+            <NavLink to="/cart">Cart</NavLink>
+            <NavLink to="/orders">Orders</NavLink>
+            <NavLink to="/profile">Profile</NavLink>
+            <NavLink to="/health">Health</NavLink>
+            <NavLink to="/subscription">Subscription</NavLink>
 
             {isAuthenticated ? (
               <>
@@ -31,7 +34,7 @@ export default function MainLayout() {
               </>
             ) : (
               <>
-                <Link to="/login">Login</Link>
+                <NavLink to="/login">Login</NavLink>
                 <Link className="btn" to="/register">Register</Link>
               </>
             )}

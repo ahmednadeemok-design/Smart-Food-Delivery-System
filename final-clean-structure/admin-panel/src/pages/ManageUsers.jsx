@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import DataTable from "../components/admin/DataTable.jsx";
-import { deleteAdminUser, getAdminUsers, updateAdminUser } from "../services/adminService.js";
+import { deleteAdminUser, getAdminUsers, issuePasswordReset, updateAdminUser } from "../services/adminService.js";
 import { toast } from "../utils/toast.js";
 
 export default function ManageUsers() {
@@ -35,6 +35,15 @@ export default function ManageUsers() {
     }
   };
 
+  const resetPassword = async (row) => {
+    try {
+      const res = await issuePasswordReset(row._id, { reason: "Admin issued temporary password" });
+      toast.success(`Temporary password for ${row.email}: ${res.data.data.temporaryPassword}`);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const columns = [
     { key: "name", label: "Name" },
     { key: "email", label: "Email" },
@@ -57,6 +66,7 @@ export default function ManageUsers() {
           <button className="btn outline" onClick={() => updateUser(row._id, { isBlocked: !row.isBlocked, blockReason: row.isBlocked ? "" : "Admin block", reason: "Admin toggled user block" })}>
             {row.isBlocked ? "Unblock" : "Block"}
           </button>
+          <button className="btn outline" onClick={() => resetPassword(row)}>Reset Password</button>
           <button className="btn danger" onClick={() => removeUser(row._id)}>Delete</button>
         </div>
       ),

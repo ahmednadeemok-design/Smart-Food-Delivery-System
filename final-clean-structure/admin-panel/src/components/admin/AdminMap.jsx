@@ -1,8 +1,6 @@
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import L from "leaflet";
-
-// approximate coordinates for demo
-const CENTER = { lat: 32.1020, lng: 74.8740 };
+import { NAROWAL_CENTER, normalizeLocation, validateCoordinates } from "../../utils/location.js";
 
 const icon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -13,11 +11,14 @@ const icon = new L.Icon({
 });
 
 export default function AdminMap({ points = [] }) {
-  const safePoints = points.length ? points : [{ label: "Narowal City Center", ...CENTER }];
+  const safePoints = (points.length ? points : [{ label: "Narowal City Center", ...NAROWAL_CENTER }])
+    .filter((point) => validateCoordinates(point))
+    .map((point) => ({ ...point, ...normalizeLocation(point) }));
+  const center = safePoints[0] || NAROWAL_CENTER;
 
   return (
     <div className="admin-map">
-      <MapContainer center={[CENTER.lat, CENTER.lng]} zoom={13} scrollWheelZoom={false} style={{ minHeight: 330, width: "100%" }}>
+      <MapContainer center={[center.lat, center.lng]} zoom={13} scrollWheelZoom={false} style={{ minHeight: 330, width: "100%" }}>
         <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {safePoints.map((point, index) => (
           <Marker key={`${point.label}-${index}`} position={[Number(point.lat), Number(point.lng)]} icon={icon}>

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import socket from "../services/socket.js";
 import RouteMap from "../components/rider/RouteMap.jsx";
-import { getMyOrders, updateOrderStatus, verifyDelivery } from "../services/orderService.js";
-import { updateRiderLocation } from "../services/riderService.js";
+import { markPicked, verifyDelivery } from "../services/orderService.js";
+import { getActiveOrder, updateRiderLocation } from "../services/riderService.js";
 import { toast } from "../utils/toast.js";
 
 const NAROWAL_CENTER = { lat: 32.1020, lng: 74.8740 };
@@ -30,9 +30,8 @@ export default function ActiveDelivery() {
 
   const loadActiveOrder = async () => {
     try {
-      const res = await getMyOrders();
-      const orders = res.data.data || [];
-      setActiveOrder(orders.find((order) => !["delivered", "cancelled"].includes(order.status)) || null);
+      const res = await getActiveOrder();
+      setActiveOrder(res.data.data || null);
     } catch (err) {
       toast.error(err.message);
     }
@@ -42,12 +41,16 @@ export default function ActiveDelivery() {
     loadActiveOrder();
     socket.connect();
     const interval = setInterval(() => {
-      setLocation((prev) => {
-        const next = { lat: Number((prev.lat + 0.001).toFixed(4)), lng: Number((prev.lng + 0.001).toFixed(4)) };
+      if (!navigator.geolocation) {
+        updateRiderLocation(location, true).catch(() => {});
+        return;
+      }
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         socket.emit("rider-location-update", { riderId: "active-rider", location: next });
         updateRiderLocation(next, true).catch(() => {});
-        return next;
-      });
+        setLocation(next);
+      }, () => updateRiderLocation(location, true).catch(() => {}), { enableHighAccuracy: true, timeout: 6000 });
     }, 5000);
     return () => { clearInterval(interval); socket.disconnect(); };
   }, []);
@@ -55,7 +58,8 @@ export default function ActiveDelivery() {
   const moveStatus = async (status) => {
     if (!activeOrder) return toast.error("No active delivery");
     try {
-      const res = await updateOrderStatus(activeOrder._id, status);
+      const res = status === "picked" ? await markPicked(activeOrder._id) : null;
+      if (!res) return;
       setActiveOrder(res.data.data);
       toast.success(`Order marked as ${status}`);
     } catch (err) {
@@ -89,6 +93,8 @@ export default function ActiveDelivery() {
             {activeOrder && <p>Order #{activeOrder._id.slice(-6)}</p>}
             {activeOrder?.restaurant && <p><b>Pickup:</b> {activeOrder.restaurant.name}, {activeOrder.restaurant.address}</p>}
             {activeOrder && <p><b>Drop:</b> {activeOrder.deliveryAddress}</p>}
+            {activeOrder && <p><b>Payment:</b> {String(activeOrder.paymentMethod || "cod").toUpperCase()} - collect {activeOrder.paymentMethod === "cod" ? `Rs. ${Number(activeOrder.totalAmount || 0).toLocaleString("en-PK")}` : "online paid"}</p>}
+            {activeOrder && <div className="action-row" style={{ marginBottom: 12 }}><button className="btn outline" type="button">Contact Restaurant</button><button className="btn outline" type="button">Contact Customer</button></div>}
             {activeOrder?.status === "assigned" && <button className="btn" onClick={() => moveStatus("picked")}>Confirm Pickup</button>}
             {["assigned", "picked"].includes(activeOrder?.status) && (
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

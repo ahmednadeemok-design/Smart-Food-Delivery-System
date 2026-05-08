@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import HeatMapPlaceholder from "../components/map/HeatMapPlaceholder.jsx";
 import RestaurantCard from "../components/restaurant/RestaurantCard.jsx";
 import FoodCard from "../components/food/FoodCard.jsx";
+import { filterFoodByGoal, getRecommendations } from "../services/aiService.js";
 import { getRestaurants, getRestaurantItems } from "../services/restaurantService.js";
 import { addToCart } from "../store/cartStore.js";
 import { toast } from "../utils/toast.js";
@@ -14,6 +15,8 @@ export default function Home() {
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [foods, setFoods] = useState([]);
+  const [aiFoods, setAiFoods] = useState([]);
+  const [healthFoods, setHealthFoods] = useState([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -21,7 +24,13 @@ export default function Home() {
       const list = res.data.data || [];
       setRestaurants(list);
       const menuResponses = await Promise.all(list.slice(0, 4).map((restaurant) => getRestaurantItems(restaurant._id)));
-      setFoods(menuResponses.flatMap((menuRes, index) => (menuRes.data.data || []).slice(0, 2).map((item) => ({ ...item, restaurantName: list[index]?.name }))));
+      const nextFoods = menuResponses.flatMap((menuRes, index) => (menuRes.data.data || []).slice(0, 2).map((item) => ({ ...item, restaurantName: list[index]?.name })));
+      setFoods(nextFoods);
+      getRecommendations().then((aiRes) => {
+        const recommended = aiRes.data.data || [];
+        setAiFoods(recommended.map((item) => nextFoods.find((food) => String(food._id) === String(item.id || item._id)) || item).filter((item) => item.restaurant || item._id));
+      }).catch(() => setAiFoods([]));
+      filterFoodByGoal({ goal: "balanced", items: nextFoods }).then((aiRes) => setHealthFoods(aiRes.data.data || [])).catch(() => setHealthFoods([]));
     }).catch(() => {});
   }, []);
 
@@ -112,7 +121,7 @@ export default function Home() {
             <span className="muted">Based on Narowal demand and kitchen freshness</span>
           </div>
           <div className="grid grid-3">
-            {foods.slice(0, 6).map((item) => (
+            {(aiFoods.length ? aiFoods : foods).slice(0, 6).map((item) => (
               <FoodCard key={item._id} item={item} onAdd={(food) => {
                 addToCart({ ...food, restaurant: food.restaurant });
                 toast.success("Added to cart");
@@ -137,6 +146,13 @@ export default function Home() {
       <section className="page">
         <div className="container">
           <HeatMapPlaceholder />
+          {healthFoods.length > 0 && (
+            <div className="card" style={{ marginTop: 18 }}>
+              <span className="badge success">AI health picks</span>
+              <h3>Balanced Narowal choices</h3>
+              <p className="muted">{healthFoods.slice(0, 3).map((item) => item.name).join(", ")}</p>
+            </div>
+          )}
         </div>
       </section>
     </>

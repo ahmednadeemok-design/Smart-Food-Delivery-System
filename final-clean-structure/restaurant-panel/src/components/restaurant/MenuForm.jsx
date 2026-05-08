@@ -9,6 +9,8 @@ export default function MenuForm({ onSubmit, restaurants = [] }) {
     category: "",
     calories: "",
     tags: "",
+    preparationTime: "15",
+    isFeatured: false,
   });
 
   const update = (key, value) => setForm({ ...form, [key]: value });
@@ -24,6 +26,8 @@ export default function MenuForm({ onSubmit, restaurants = [] }) {
         category: form.category,
         calories: Number(form.calories || 0),
         tags: form.tags.split(",").map((x) => x.trim()).filter(Boolean),
+        preparationTime: Number(form.preparationTime || 15),
+        isFeatured: Boolean(form.isFeatured),
       },
     });
   };
@@ -46,6 +50,11 @@ export default function MenuForm({ onSubmit, restaurants = [] }) {
       <input className="input" placeholder="Category" value={form.category} onChange={(e) => update("category", e.target.value)} />
       <input className="input" type="number" placeholder="Calories" value={form.calories} onChange={(e) => update("calories", e.target.value)} />
       <input className="input" placeholder="Tags: dinner, diet, spicy" value={form.tags} onChange={(e) => update("tags", e.target.value)} />
+      <input className="input" type="number" min="5" placeholder="Preparation time in minutes" value={form.preparationTime} onChange={(e) => update("preparationTime", e.target.value)} />
+      <label>
+        <input type="checkbox" checked={form.isFeatured} onChange={(e) => update("isFeatured", e.target.checked)} />
+        {" "}Feature this item
+      </label>
       <button className="btn">Add Item</button>
     </form>
   );

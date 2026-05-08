@@ -38,6 +38,7 @@ export default function Register() {
     <section className="auth-shell">
       <div className="auth-card wide">
         <form className="card form" onSubmit={submit}>
+          <img className="auth-brand-logo" src="/brand/logo.svg" alt="SmartFood Narowal" />
           <span className="badge">Narowal only</span>
           <h2>Create Account</h2>
           <p className="muted">Register once, save addresses, earn loyalty points, and pay with COD.</p>

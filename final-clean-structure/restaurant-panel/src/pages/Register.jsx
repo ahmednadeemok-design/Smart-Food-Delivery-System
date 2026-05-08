@@ -30,6 +30,7 @@ export default function Register() {
     <section className="page">
       <div className="container" style={{ maxWidth: 520 }}>
         <form className="card form" onSubmit={submit}>
+          <img className="auth-brand-logo" src="/brand/restaurant-partner-logo.svg" alt="SmartFood Restaurant Partner" />
           <h1>Restaurant Owner Register</h1>
           {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
           <input className="input" placeholder="Owner Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

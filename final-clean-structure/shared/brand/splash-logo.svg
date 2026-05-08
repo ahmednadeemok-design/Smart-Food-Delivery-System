@@ -1,0 +1,7 @@
+<svg width="900" height="420" viewBox="0 0 900 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="420" rx="40" fill="#FFF7F2"/>
+  <circle cx="140" cy="96" r="92" fill="#FFE2D2"/>
+  <circle cx="792" cy="328" r="122" fill="#FFECD7"/>
+  <image href="logo.svg" x="120" y="100" width="660" height="190"/>
+  <text x="284" y="308" fill="#7C2D12" font-family="Inter, Poppins, Arial, sans-serif" font-size="28" font-weight="800">Fresh Narowal deliveries, made smarter.</text>
+</svg>

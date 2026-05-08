@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { cancelOrder, getMyOrders } from "../services/orderService.js";
+import { cancelOrder, getMyOrders, requestRefund } from "../services/orderService.js";
 import socket from "../services/socket.js";
 import formatCurrency from "../utils/formatCurrency.js";
 import { toast } from "../utils/toast.js";
@@ -48,6 +48,18 @@ export default function OrderTracking() {
     }
   };
 
+  const refund = async (order) => {
+    const reason = window.prompt("Refund reason", "Issue with delivered order");
+    if (!reason) return;
+    try {
+      await requestRefund(order._id, { reason, amount: order.totalAmount });
+      toast.success("Refund request submitted for admin review");
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   return (
     <section className="page">
       <div className="container">
@@ -73,6 +85,7 @@ export default function OrderTracking() {
                 <span><b>{order.freshnessScore}%</b><small>Freshness</small></span>
                 <span><b>{order.estimatedDeliveryTime || 35} min</b><small>ETA</small></span>
                 <span><b>{formatCurrency(order.deliveryFee || 0)}</b><small>Delivery</small></span>
+                <span><b>{order.paymentStatus || "pending"}</b><small>Payment</small></span>
               </div>
               <SmartMap
                 height={260}
@@ -100,6 +113,11 @@ export default function OrderTracking() {
                   <span className="badge">Delivery OTP: {order.otp}</span>
                   <span className="muted">Share this code with your assigned rider at delivery.</span>
                 </div>
+              )}
+              <div className="summary-row"><span>Payment method</span><b>{String(order.paymentMethod || "cod").toUpperCase()}</b></div>
+              <div className="summary-row"><span>Refund status</span><b>{order.refundStatus || "none"}</b></div>
+              {order.status === "delivered" && ["none", undefined].includes(order.refundStatus) && (
+                <button className="btn outline" onClick={() => refund(order)} style={{ marginLeft: 8 }}>Request Refund</button>
               )}
             </div>
           ))}

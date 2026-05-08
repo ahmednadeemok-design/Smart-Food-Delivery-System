@@ -1,8 +1,6 @@
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-
-// approximate coordinates for demo
-export const NAROWAL_CENTER = { lat: 32.1020, lng: 74.8740 };
+import { NAROWAL_CENTER, normalizeLocation, validateCoordinates } from "../../utils/location.js";
 
 const icon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -22,7 +20,9 @@ function LocationPicker({ onPick }) {
 }
 
 export default function SmartMap({ points = [], route = false, onPick, height = 320 }) {
-  const usablePoints = points.filter((point) => Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng)));
+  const usablePoints = points
+    .filter((point) => validateCoordinates(point))
+    .map((point) => ({ ...point, ...normalizeLocation(point) }));
   const center = usablePoints[0] || NAROWAL_CENTER;
   const positions = usablePoints.map((point) => [Number(point.lat), Number(point.lng)]);
 

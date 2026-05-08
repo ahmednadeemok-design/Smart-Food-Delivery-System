@@ -7,7 +7,11 @@ const Complaint = require("../models/Complaint");
 const Payment = require("../models/Payment");
 const TrustScore = require("../models/TrustScore");
 const AdminAuditLog = require("../models/AdminAuditLog");
+const Campaign = require("../models/Campaign");
+const SupportTicket = require("../models/SupportTicket");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
+const { settleCodDelivery } = require("../services/financeService");
+const { sendRestaurantApproval, sendRiderApproval, sendTemporaryPassword, sendOrderUpdate } = require("../utils/emailService");
 
 const clampScore = (score) => Math.max(0, Math.min(100, Number(score)));
 const allowedRoles = ["customer", "rider", "restaurant", "admin"];
@@ -47,26 +51,87 @@ exports.deleteUser = async (req, res) => {
   return successResponse(res, "User deleted", { id: req.params.id });
 };
 
+exports.issuePasswordReset = async (req, res) => {
+  const user = await User.findById(req.params.id).select("+password");
+  if (!user) return errorResponse(res, "User not found", 404);
+  const temporaryPassword = `SF-${Math.random().toString(36).slice(2, 8).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+  user.password = temporaryPassword;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+  await sendTemporaryPassword(user, temporaryPassword);
+  await logAction(req, "user.password_reset.issue", "user", user._id, req.body?.reason || "Admin issued temporary password");
+  return successResponse(res, "Temporary password issued. It is shown once and emailed when email is enabled.", {
+    user: { id: user._id, email: user.email },
+    temporaryPassword,
+  });
+};
+
 exports.listRestaurants = async (req, res) => {
   const restaurants = await Restaurant.find().populate("owner", "name email phone").sort("-createdAt");
   return successResponse(res, "Admin restaurants fetched", restaurants);
 };
 
+exports.getRestaurant = async (req, res) => {
+  const restaurant = await Restaurant.findById(req.params.id).populate("owner", "name email phone isBlocked");
+  if (!restaurant) return errorResponse(res, "Restaurant not found", 404);
+  const [menu, orders, campaigns, supportTickets] = await Promise.all([
+    FoodItem.find({ restaurant: restaurant._id }).sort("category name"),
+    Order.find({ restaurant: restaurant._id }).populate("customer", "name email phone").populate({ path: "rider", populate: { path: "user", select: "name email phone" } }).sort("-createdAt").limit(50),
+    Campaign.find({ restaurant: restaurant._id }).sort("-createdAt"),
+    SupportTicket.find({ restaurant: restaurant._id }).populate("owner", "name email phone").sort("-createdAt"),
+  ]);
+  return successResponse(res, "Restaurant fetched", { restaurant, menu, orders, campaigns, supportTickets });
+};
+
 exports.updateRestaurant = async (req, res) => {
-  const allowed = ["name", "description", "phone", "address", "localArea", "location", "image", "cuisineTypes", "isOpen", "isActive", "approvalStatus", "qualityFlag", "qualityFlagReason", "kitchenLoad", "averagePreparationTime", "accuracyRate", "trustScore", "rating"];
+  const allowed = ["name", "description", "phone", "supportContact", "address", "localArea", "location", "image", "logo", "banner", "cuisineTypes", "businessHours", "isOpen", "isActive", "approvalStatus", "qualityFlag", "qualityFlagReason", "kitchenLoad", "averagePreparationTime", "accuracyRate", "trustScore", "rating"];
   const updates = {};
   allowed.forEach((key) => {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
   });
-  if (updates.approvalStatus && !["pending", "approved", "rejected"].includes(updates.approvalStatus)) {
+  if (updates.approvalStatus && !["pending", "pending_review", "approved", "rejected", "suspended"].includes(updates.approvalStatus)) {
     return errorResponse(res, "Invalid restaurant approval status", 400);
   }
   if (updates.trustScore !== undefined) updates.trustScore = clampScore(updates.trustScore);
 
   const restaurant = await Restaurant.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }).populate("owner", "name email phone");
   if (!restaurant) return errorResponse(res, "Restaurant not found", 404);
+  if (updates.approvalStatus === "approved") await sendRestaurantApproval(restaurant);
   await logAction(req, "restaurant.update", "restaurant", restaurant._id, req.body.reason, updates);
   return successResponse(res, "Restaurant updated", restaurant);
+};
+
+exports.approveRestaurant = (req, res) => {
+  req.body.approvalStatus = "approved";
+  req.body.isActive = true;
+  return exports.updateRestaurant(req, res);
+};
+
+exports.rejectRestaurant = (req, res) => {
+  req.body.approvalStatus = "rejected";
+  req.body.isOpen = false;
+  return exports.updateRestaurant(req, res);
+};
+
+exports.suspendRestaurant = (req, res) => {
+  req.body.approvalStatus = "suspended";
+  req.body.isOpen = false;
+  req.body.isActive = false;
+  return exports.updateRestaurant(req, res);
+};
+
+exports.reactivateRestaurant = (req, res) => {
+  req.body.approvalStatus = "approved";
+  req.body.isActive = true;
+  return exports.updateRestaurant(req, res);
+};
+
+exports.resetRestaurantOwnerPassword = async (req, res) => {
+  const restaurant = await Restaurant.findById(req.params.id);
+  if (!restaurant) return errorResponse(res, "Restaurant not found", 404);
+  req.params.id = restaurant.owner;
+  return exports.issuePasswordReset(req, res);
 };
 
 exports.deleteRestaurant = async (req, res) => {
@@ -83,9 +148,45 @@ exports.getRestaurantMenu = async (req, res) => {
   return successResponse(res, "Restaurant menu fetched", items);
 };
 
+exports.listRestaurantSupportTickets = async (req, res) => {
+  const tickets = await SupportTicket.find()
+    .populate("restaurant", "name localArea approvalStatus")
+    .populate("owner", "name email phone")
+    .populate("order", "status totalAmount")
+    .sort("-createdAt");
+  return successResponse(res, "Restaurant support tickets fetched", tickets);
+};
+
+exports.updateRestaurantSupportTicket = async (req, res) => {
+  const ticket = await SupportTicket.findByIdAndUpdate(
+    req.params.id,
+    { status: req.body.status, adminNote: req.body.adminNote },
+    { new: true, runValidators: true }
+  )
+    .populate("restaurant", "name localArea")
+    .populate("owner", "name email phone");
+  if (!ticket) return errorResponse(res, "Support ticket not found", 404);
+  await logAction(req, "restaurant.support.update", "support_ticket", ticket._id, req.body.adminNote || "Support ticket updated");
+  return successResponse(res, "Support ticket updated", ticket);
+};
+
 exports.listRiders = async (req, res) => {
-  const riders = await Rider.find().populate("user", "name email phone trustScore isBlocked").populate("activeOrders").sort("-createdAt");
+  const riders = await Rider.find().populate("user", "name email phone trustScore isBlocked").populate("activeOrders activeOrder").sort("-createdAt");
   return successResponse(res, "Admin riders fetched", riders);
+};
+
+exports.getRider = async (req, res) => {
+  const rider = await Rider.findById(req.params.id)
+    .populate("user", "name email phone trustScore isBlocked")
+    .populate({
+      path: "activeOrder activeOrders",
+      populate: [
+        { path: "customer", select: "name phone email" },
+        { path: "restaurant", select: "name address location" },
+      ],
+    });
+  if (!rider) return errorResponse(res, "Rider not found", 404);
+  return successResponse(res, "Rider fetched", rider);
 };
 
 exports.updateRider = async (req, res) => {
@@ -94,19 +195,36 @@ exports.updateRider = async (req, res) => {
   allowed.forEach((key) => {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
   });
-  if (updates.approvalStatus && !["pending", "approved", "rejected"].includes(updates.approvalStatus)) {
+  if (updates.approvalStatus && !["pending", "approved", "rejected", "suspended"].includes(updates.approvalStatus)) {
     return errorResponse(res, "Invalid rider approval status", 400);
   }
   if (updates.trustScore !== undefined) updates.trustScore = clampScore(updates.trustScore);
   if (updates.isSuspended) updates.isOnline = false;
   if (updates.isSuspended) updates.availabilityStatus = "suspended";
+  if (updates.isSuspended === false && !updates.isOnline && updates.approvalStatus !== "rejected") updates.availabilityStatus = "approved_offline";
   if (updates.approvalStatus === "approved" && updates.isSuspended !== true) updates.availabilityStatus = "approved_offline";
   if (updates.approvalStatus === "rejected") updates.availabilityStatus = "pending_approval";
 
   const rider = await Rider.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }).populate("user", "name email phone trustScore isBlocked");
   if (!rider) return errorResponse(res, "Rider not found", 404);
+  if (updates.approvalStatus === "approved") await sendRiderApproval(rider);
   await logAction(req, "rider.update", "rider", rider._id, req.body.reason, updates);
   return successResponse(res, "Rider updated", rider);
+};
+
+exports.approveRider = (req, res) => {
+  req.body.approvalStatus = "approved";
+  req.body.isActive = true;
+  req.body.isSuspended = false;
+  return exports.updateRider(req, res);
+};
+
+exports.suspendRider = (req, res) => {
+  req.body.approvalStatus = "suspended";
+  req.body.isSuspended = true;
+  req.body.isOnline = false;
+  req.body.isActive = false;
+  return exports.updateRider(req, res);
 };
 
 exports.listOrders = async (req, res) => {
@@ -135,7 +253,15 @@ exports.updateOrder = async (req, res) => {
     if (updates.status === "cancelled") order.paymentStatus = "failed";
   }
   await order.save();
+  if (updates.status === "delivered") {
+    await settleCodDelivery(order);
+    await order.save();
+  }
   await logAction(req, "order.update", "order", order._id, req.body.reason, updates);
+  if (updates.status) {
+    const populated = await Order.findById(order._id).populate("customer", "name email").populate("restaurant", "name");
+    await sendOrderUpdate(populated, `Order ${updates.status}`, `Your SmartFood Narowal order is now ${updates.status}.`);
+  }
   return successResponse(res, "Order updated", order);
 };
 
@@ -161,24 +287,69 @@ exports.updateComplaint = async (req, res) => {
 };
 
 exports.listPayments = async (req, res) => {
-  const payments = await Payment.find().populate("order user", "name email totalAmount status").sort("-createdAt");
+  const payments = await Payment.find()
+    .populate("order user restaurant")
+    .populate({ path: "rider", populate: { path: "user", select: "name email phone" } })
+    .sort("-createdAt");
   return successResponse(res, "Admin payments fetched", payments);
 };
 
 exports.refundPayment = async (req, res) => {
   const payment = await Payment.findById(req.params.id);
   if (!payment) return errorResponse(res, "Payment not found", 404);
+  const order = await Order.findById(payment.order);
   if (req.body.approved) {
     payment.status = "refunded";
+    payment.refundStatus = "refunded";
+    payment.refundAmount = Number(req.body.amount || payment.refundAmount || payment.amount || 0);
     payment.refundReason = req.body.reason || "Admin approved refund";
     payment.refundedAt = new Date();
-    await Order.findByIdAndUpdate(payment.order, { paymentStatus: "refunded" });
+    if (order) {
+      order.paymentStatus = "refunded";
+      order.refundStatus = "refunded";
+      order.refundAmount = payment.refundAmount;
+      order.refundReason = payment.refundReason;
+      order.refundedAt = new Date();
+      await order.save();
+    }
   } else {
+    payment.refundStatus = "rejected";
     payment.refundReason = req.body.reason || "Admin rejected refund";
+    if (order) {
+      order.refundStatus = "rejected";
+      order.refundReason = payment.refundReason;
+      if (order.paymentStatus === "refund_pending") order.paymentStatus = order.financialSettled ? "cash_collected" : "pending";
+      await order.save();
+    }
   }
   await payment.save();
   await logAction(req, req.body.approved ? "payment.refund.approve" : "payment.refund.reject", "payment", payment._id, req.body.reason);
   return successResponse(res, "Refund decision saved", payment);
+};
+
+exports.financialSummary = async (req, res) => {
+  const [orders, payments, riders, restaurants] = await Promise.all([
+    Order.find(),
+    Payment.find(),
+    Rider.find().populate("user", "name email phone"),
+    Restaurant.find().populate("owner", "name email phone"),
+  ]);
+
+  const deliveredOrders = orders.filter((order) => order.status === "delivered");
+  const totals = {
+    grossOrderValue: orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0),
+    collectedCod: orders.reduce((sum, order) => sum + Number(order.cashCollectedAmount || 0), 0),
+    platformCommission: orders.reduce((sum, order) => sum + Number(order.platformCommission || 0), 0),
+    platformEarnings: orders.reduce((sum, order) => sum + Number(order.platformEarning || 0), 0),
+    restaurantRevenue: orders.reduce((sum, order) => sum + Number(order.restaurantRevenue || 0), 0),
+    riderEarnings: orders.reduce((sum, order) => sum + Number(order.riderEarning || 0), 0),
+    pendingRestaurantSettlement: restaurants.reduce((sum, restaurant) => sum + Number(restaurant.pendingSettlement || 0), 0),
+    pendingRiderPayout: riders.reduce((sum, rider) => sum + Number(rider.pendingPayout || 0), 0),
+    refunds: payments.reduce((sum, payment) => sum + Number(payment.refundAmount || 0), 0),
+    deliveredOrders: deliveredOrders.length,
+  };
+
+  return successResponse(res, "Financial summary fetched", { totals, riders, restaurants, payments });
 };
 
 const applyTrustChange = async (req, actorType, actorId, change, reason) => {

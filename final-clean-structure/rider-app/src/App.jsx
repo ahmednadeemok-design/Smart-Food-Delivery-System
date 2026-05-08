@@ -8,6 +8,7 @@ import AvailableOrders from "./pages/AvailableOrders.jsx";
 import ActiveDelivery from "./pages/ActiveDelivery.jsx";
 import MultiOrderRoute from "./pages/MultiOrderRoute.jsx";
 import DeliveryVerification from "./pages/DeliveryVerification.jsx";
+import RiderHistory from "./pages/RiderHistory.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/active-delivery" element={<ActiveDelivery />} />
           <Route path="/multi-order-route" element={<MultiOrderRoute />} />
           <Route path="/delivery-verification" element={<DeliveryVerification />} />
+          <Route path="/history" element={<RiderHistory />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

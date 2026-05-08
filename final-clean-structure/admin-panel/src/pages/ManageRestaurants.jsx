@@ -1,17 +1,26 @@
 import { useEffect, useState } from "react";
 import DataTable from "../components/admin/DataTable.jsx";
-import { deleteAdminRestaurant, getAdminRestaurantMenu, getAdminRestaurants, updateAdminRestaurant } from "../services/adminService.js";
+import {
+  deleteAdminRestaurant,
+  getAdminRestaurantMenu,
+  getAdminRestaurants,
+  getRestaurantSupportTickets,
+  updateAdminRestaurant,
+  updateRestaurantSupportTicket,
+} from "../services/adminService.js";
 import { toast } from "../utils/toast.js";
 import formatCurrency from "../utils/formatCurrency.js";
 
 export default function ManageRestaurants() {
   const [restaurants, setRestaurants] = useState([]);
   const [menu, setMenu] = useState([]);
+  const [supportTickets, setSupportTickets] = useState([]);
 
   const loadRestaurants = () => {
     getAdminRestaurants().then((res) => {
       if (res.data.data?.length) setRestaurants(res.data.data);
     }).catch((err) => toast.error(err.message));
+    getRestaurantSupportTickets().then((res) => setSupportTickets(res.data.data || [])).catch(() => {});
   };
 
   useEffect(() => loadRestaurants(), []);
@@ -53,6 +62,16 @@ export default function ManageRestaurants() {
     }
   };
 
+  const resolveTicket = async (ticket) => {
+    try {
+      await updateRestaurantSupportTicket(ticket._id, { status: "resolved", adminNote: "Resolved by SmartFood operations" });
+      toast.success("Support ticket resolved");
+      loadRestaurants();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const columns = [
     { key: "name", label: "Restaurant" },
     { key: "owner", label: "Owner", render: (row) => `${row.owner?.name || "Owner"} (${row.owner?.email || "no email"})` },
@@ -70,6 +89,7 @@ export default function ManageRestaurants() {
         <div className="action-row">
           <button className="btn success" onClick={() => updateRestaurant(row._id, { approvalStatus: "approved", isActive: true, reason: "Admin approved restaurant" })}>Approve</button>
           <button className="btn outline" onClick={() => updateRestaurant(row._id, { approvalStatus: "rejected", isActive: false, reason: "Admin rejected restaurant" })}>Reject</button>
+          <button className="btn outline" onClick={() => updateRestaurant(row._id, { approvalStatus: "suspended", isActive: false, isOpen: false, reason: "Admin suspended restaurant" })}>Suspend</button>
           <button className="btn outline" onClick={() => updateRestaurant(row._id, { isActive: row.isActive === false, reason: "Admin toggled restaurant activation" })}>{row.isActive === false ? "Activate" : "Deactivate"}</button>
           <button className="btn outline" onClick={() => editRestaurant(row)}>Edit</button>
           <button className="btn outline" onClick={() => viewMenu(row)}>Menu</button>
@@ -100,6 +120,23 @@ export default function ManageRestaurants() {
             </div>
           </div>
         )}
+        <div className="card" style={{ marginTop: 18 }}>
+          <h3>Restaurant Support Tickets</h3>
+          {supportTickets.length === 0 && <p className="muted">No restaurant support tickets yet.</p>}
+          <div className="grid">
+            {supportTickets.map((ticket) => (
+              <div className="card" key={ticket._id}>
+                <span className="badge">{ticket.status}</span>
+                <h3>{ticket.restaurant?.name || "Restaurant"} - {ticket.type?.replace("_", " ")}</h3>
+                <p>{ticket.description}</p>
+                <p className="muted">{ticket.owner?.email || "Owner email unavailable"}</p>
+                {ticket.status !== "resolved" && (
+                  <button className="btn outline" onClick={() => resolveTicket(ticket)}>Mark resolved</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );

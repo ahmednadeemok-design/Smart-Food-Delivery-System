@@ -1,26 +1,24 @@
 import { useEffect, useState } from "react";
 import ComplaintCard from "../components/admin/ComplaintCard.jsx";
 import { getAdminComplaints, updateAdminComplaint } from "../services/adminService.js";
-import { mockComplaints } from "../utils/mockData.js";
 import { toast } from "../utils/toast.js";
 
 export default function Complaints() {
-  const [complaints, setComplaints] = useState(mockComplaints);
+  const [complaints, setComplaints] = useState([]);
 
   const loadComplaints = () => {
     getAdminComplaints().then((res) => {
-      if (res.data.data?.length) {
-        setComplaints(res.data.data.map((c) => ({
+      setComplaints((res.data.data || []).map((c) => ({
           _id: c._id,
           type: c.type,
           customer: c.customer?.name || "Customer",
+          restaurant: c.restaurant?.name || "Restaurant",
           customerId: c.customer?._id,
           orderId: c.order?._id,
           status: c.status,
           aiDecision: c.aiDecision,
           compensation: c.compensation,
         })));
-      }
     }).catch((err) => toast.error(err.message));
   };
 
@@ -76,6 +74,7 @@ export default function Complaints() {
               </div>
             </div>
           ))}
+          {complaints.length === 0 && <div className="card">No complaints yet.</div>}
         </div>
       </div>
     </section>

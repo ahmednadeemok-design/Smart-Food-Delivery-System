@@ -11,6 +11,7 @@ const {
   complaintIntent,
   refundDecision,
   goalFilter,
+  calorieSummary,
 } = require("../controllers/aiController");
 
 router.get("/recommendations", protect, recommendFood);
@@ -22,5 +23,6 @@ router.post("/order-accuracy", orderAccuracy);
 router.post("/complaint-intent", complaintIntent);
 router.post("/refund-decision", refundDecision);
 router.post("/goal-filter", goalFilter);
+router.post("/calories", calorieSummary);
 
 module.exports = router;

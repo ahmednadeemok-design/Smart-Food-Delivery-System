@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext.jsx";
 
 export default function RestaurantLayout() {
@@ -14,23 +14,29 @@ export default function RestaurantLayout() {
     <>
       <header className="navbar">
         <div className="container navbar-inner">
-          <Link className="brand" to="/dashboard">SmartFood Restaurant</Link>
+          <Link className="brand" to="/dashboard">
+            <img className="brand-logo" src="/brand/favicon.svg" alt="" />
+            <span>SmartFood Restaurant</span>
+          </Link>
 
           <nav className="nav-links">
             {isAuthenticated ? (
               <>
-                <Link to="/dashboard">Dashboard</Link>
-                <Link to="/orders">Orders</Link>
-                <Link to="/menu">Menu</Link>
-                <Link to="/kitchen-load">Kitchen Load</Link>
-                <Link to="/accuracy-reports">Accuracy</Link>
-                <Link to="/quality-audit">Quality</Link>
+                <NavLink to="/dashboard">Dashboard</NavLink>
+                <NavLink to="/orders">Orders</NavLink>
+                <NavLink to="/menu">Menu</NavLink>
+                <NavLink to="/reports">Reports</NavLink>
+                <NavLink to="/campaigns">Campaigns</NavLink>
+                <NavLink to="/support">Support</NavLink>
+                <NavLink to="/kitchen-load">Kitchen Load</NavLink>
+                <NavLink to="/accuracy-reports">Accuracy</NavLink>
+                <NavLink to="/quality-audit">Quality</NavLink>
                 <span className="badge">{user?.role || "restaurant"}</span>
                 <button className="btn outline" onClick={handleLogout}>Logout</button>
               </>
             ) : (
               <>
-                <Link to="/login">Login</Link>
+                <NavLink to="/login">Login</NavLink>
                 <Link className="btn" to="/register">Register</Link>
               </>
             )}
@@ -42,7 +48,7 @@ export default function RestaurantLayout() {
 
       <footer className="footer">
         <div className="container">
-          Restaurant Panel — order management, kitchen load, accuracy prediction, and quality audit.
+          Restaurant Panel - orders, menu, reports, campaigns, support, kitchen load, and quality audit.
         </div>
       </footer>
     </>

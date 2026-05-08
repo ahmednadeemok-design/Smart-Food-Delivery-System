@@ -1,6 +1,7 @@
 const Review = require("../models/Review");
 const Restaurant = require("../models/Restaurant");
 const FoodItem = require("../models/FoodItem");
+const Order = require("../models/Order");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 
 const sentimentFromRating = (rating) => {
@@ -14,6 +15,13 @@ exports.createReview = async (req, res) => {
     const { order, restaurant, foodItem, rating, comment } = req.body;
     if (!restaurant && !foodItem) return errorResponse(res, "Restaurant or food item is required", 400);
     if (!rating || rating < 1 || rating > 5) return errorResponse(res, "Rating must be between 1 and 5", 400);
+    if (order) {
+      const customerOrder = await Order.findById(order);
+      if (!customerOrder) return errorResponse(res, "Order not found for review", 404);
+      if (String(customerOrder.customer) !== String(req.user._id)) return errorResponse(res, "Not allowed to review another customer's order", 403);
+      if (customerOrder.status !== "delivered") return errorResponse(res, "Reviews can be submitted after delivery", 400);
+      if (restaurant && String(customerOrder.restaurant) !== String(restaurant)) return errorResponse(res, "Review restaurant must match the order", 400);
+    }
 
     const review = await Review.create({
       order,

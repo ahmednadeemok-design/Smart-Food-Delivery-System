@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext.jsx";
 
 export default function AdminLayout() {
@@ -14,27 +14,30 @@ export default function AdminLayout() {
     <>
       <header className="navbar">
         <div className="container navbar-inner">
-          <Link className="brand" to="/dashboard">SmartFood Admin</Link>
+          <Link className="brand" to="/dashboard">
+            <img className="brand-logo" src="/brand/favicon.svg" alt="" />
+            <span>SmartFood Admin</span>
+          </Link>
 
           <nav className="nav-links">
             {isAuthenticated ? (
               <>
-                <Link to="/dashboard">Dashboard</Link>
-                <Link to="/users">Users</Link>
-                <Link to="/riders">Riders</Link>
-                <Link to="/restaurants">Restaurants</Link>
-                <Link to="/orders">Orders</Link>
-                <Link to="/complaints">Complaints</Link>
-                <Link to="/refunds">Refunds</Link>
-                <Link to="/trust-scores">Trust</Link>
-                <Link to="/analytics">Analytics</Link>
-                <Link to="/system-health">Health</Link>
+                <NavLink to="/dashboard">Dashboard</NavLink>
+                <NavLink to="/users">Users</NavLink>
+                <NavLink to="/riders">Riders</NavLink>
+                <NavLink to="/restaurants">Restaurants</NavLink>
+                <NavLink to="/orders">Orders</NavLink>
+                <NavLink to="/complaints">Complaints</NavLink>
+                <NavLink to="/refunds">Refunds</NavLink>
+                <NavLink to="/trust-scores">Trust</NavLink>
+                <NavLink to="/analytics">Analytics</NavLink>
+                <NavLink to="/system-health">Health</NavLink>
                 <span className="badge">{user?.role || "admin"}</span>
                 <button className="btn outline" onClick={handleLogout}>Logout</button>
               </>
             ) : (
               <>
-                <Link to="/login">Login</Link>
+                <NavLink to="/login">Login</NavLink>
                 <Link className="btn" to="/register">Register</Link>
               </>
             )}

@@ -20,6 +20,8 @@ export default function OrderConfirmation() {
                 <span><b>ETA</b><small>{order.estimatedDeliveryTime || 35} minutes</small></span>
               </div>
               <p><b>Delivery Address:</b> {order.deliveryAddress}</p>
+              <p><b>Payment:</b> {String(order.paymentMethod || "cod").toUpperCase()} - {order.paymentStatus || "pending"}</p>
+              <p><b>Subtotal:</b> {formatCurrency(order.subtotal)} | <b>Delivery:</b> {formatCurrency(order.deliveryFee)} | <b>Fees:</b> {formatCurrency((order.platformFee || 0) + (order.serviceFee || 0))}</p>
             </>
           ) : (
             <p className="muted">Open order tracking to view your latest order.</p>
