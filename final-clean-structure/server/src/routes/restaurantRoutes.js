@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, optionalProtect } = require("../middlewares/authMiddleware");
 const roleMiddleware = require("../middlewares/roleMiddleware");
 const {
   createRestaurant,
@@ -32,7 +32,7 @@ const {
   updateMySupportTicket,
 } = require("../controllers/restaurantController");
 
-router.get("/", getRestaurants);
+router.get("/", optionalProtect, getRestaurants);
 router.get("/my", protect, roleMiddleware("restaurant", "admin"), getMyRestaurants);
 router.get("/my/orders", protect, roleMiddleware("restaurant", "admin"), getMyRestaurantOrders);
 router.get("/my/dashboard", protect, roleMiddleware("restaurant", "admin"), getMyRestaurantDashboard);
@@ -57,11 +57,11 @@ router.patch("/my/support-tickets/:id", protect, roleMiddleware("restaurant", "a
 router.get("/mine", protect, roleMiddleware("restaurant", "admin"), getMyRestaurants);
 router.post("/", protect, roleMiddleware("restaurant", "admin"), createRestaurant);
 router.put("/:id", protect, roleMiddleware("restaurant", "admin"), updateRestaurant);
-router.get("/:id/menu", getFoodItems);
+router.get("/:id/menu", optionalProtect, getFoodItems);
 router.post("/:restaurantId/items", protect, roleMiddleware("restaurant", "admin"), addFoodItem);
-router.get("/:restaurantId/items", getFoodItems);
+router.get("/:restaurantId/items", optionalProtect, getFoodItems);
 router.put("/:restaurantId/items/:itemId", protect, roleMiddleware("restaurant", "admin"), updateFoodItem);
 router.delete("/:restaurantId/items/:itemId", protect, roleMiddleware("restaurant", "admin"), deleteFoodItem);
-router.get("/:id", getRestaurantById);
+router.get("/:id", optionalProtect, getRestaurantById);
 
 module.exports = router;

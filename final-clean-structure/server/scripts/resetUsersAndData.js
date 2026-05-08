@@ -14,6 +14,9 @@ const Subscription = require("../src/models/Subscription");
 const TrustScore = require("../src/models/TrustScore");
 const DeliveryVerification = require("../src/models/DeliveryVerification");
 const AdminAuditLog = require("../src/models/AdminAuditLog");
+const Campaign = require("../src/models/Campaign");
+const SupportTicket = require("../src/models/SupportTicket");
+const Notification = require("../src/models/Notification");
 
 const OPTIONAL_COLLECTIONS = ["carts", "sessions", "tokens"];
 
@@ -59,6 +62,9 @@ const resetUsersAndData = async () => {
   addCount(await deleteFromModel("subscriptions", Subscription));
   addCount(await deleteFromModel("trustScores", TrustScore));
   addCount(await deleteFromModel("adminAuditLogs", AdminAuditLog));
+  addCount(await deleteFromModel("campaigns", Campaign));
+  addCount(await deleteFromModel("supportTickets", SupportTicket));
+  addCount(await deleteFromModel("notifications", Notification));
   addCount(await deleteFromModel("orders", Order));
   addCount(await deleteFromModel("foodItems", FoodItem));
   addCount(await deleteFromModel("restaurants", Restaurant));

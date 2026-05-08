@@ -116,13 +116,16 @@ export default function Home() {
 
       <section className="page soft-band">
         <div className="container">
-          <div className="section-head">
-            <h2>Recommended Food</h2>
-            <span className="muted">Based on Narowal demand and kitchen freshness</span>
+          <div className="section-head recommended-head">
+            <div>
+              <h2>Recommended Food</h2>
+              <p className="muted">AI picks based on Narowal demand and kitchen freshness</p>
+            </div>
+            <Link className="btn outline" to="/restaurants">View all</Link>
           </div>
-          <div className="grid grid-3">
+          <div className="recommended-food-grid">
             {(aiFoods.length ? aiFoods : foods).slice(0, 6).map((item) => (
-              <FoodCard key={item._id} item={item} onAdd={(food) => {
+              <FoodCard key={item._id} item={item} variant="recommended" onAdd={(food) => {
                 addToCart({ ...food, restaurant: food.restaurant });
                 toast.success("Added to cart");
               }} />

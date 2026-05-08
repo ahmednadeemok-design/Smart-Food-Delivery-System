@@ -9,6 +9,7 @@ const { getDeliveryCostBreakdown } = require("../services/deliveryCostService");
 const { calculateOrderFinancials, settleCodDelivery } = require("../services/financeService");
 const { calculateCouponDiscount, clampLocation, isNarowalAddress } = require("../constants/narowal");
 const { sendOrderUpdate } = require("../utils/emailService");
+const { createNotification, notifyOrderParticipants } = require("../services/notificationService");
 
 const emitOrderUpdate = (req, order, event = "order-status-updated") => {
   const io = req.app.get("io");
@@ -146,6 +147,13 @@ exports.createOrder = async (req, res) => {
     await FoodItem.updateMany({ _id: { $in: foodIds } }, { $inc: { soldCount: 1 } });
     emitOrderUpdate(req, order, "order-created");
     await sendOrderUpdate({ ...order.toObject(), customer: req.user }, "Order placed", "Your SmartFood Narowal order has been placed successfully.");
+    const orderRestaurant = await Restaurant.findById(restaurant).select("owner name");
+    await Promise.all([
+      createNotification({ user: req.user._id, type: "order", title: "Order placed", message: "Your SmartFood Narowal COD order has been placed.", order: order._id, restaurant }),
+      orderRestaurant?.owner
+        ? createNotification({ user: orderRestaurant.owner, type: "order", title: "New restaurant order", message: `A new order is waiting at ${orderRestaurant.name}.`, order: order._id, restaurant })
+        : null,
+    ]);
 
     return successResponse(res, "Order created successfully", order, 201);
   } catch (error) {
@@ -261,8 +269,9 @@ exports.updateOrderStatus = async (req, res) => {
     await Rider.findByIdAndUpdate(order.rider, { $pull: { activeOrders: order._id }, $inc: { completedDeliveries: 1 } });
   }
   emitOrderUpdate(req, order);
-  const populated = await Order.findById(order._id).populate("customer", "name email").populate("restaurant", "name");
+  const populated = await Order.findById(order._id).populate("customer", "name email").populate("restaurant", "name owner");
   await sendOrderUpdate(populated, `Order ${order.status}`, `Your SmartFood Narowal order is now ${order.status}.`);
+  await notifyOrderParticipants(populated, `Order ${order.status}`, `Your SmartFood Narowal order is now ${order.status}.`);
   return successResponse(res, "Order status updated", order);
 };
 
@@ -308,6 +317,14 @@ exports.acceptOrder = async (req, res) => {
   emitOrderUpdate(req, order);
   const assignedOrder = await Order.findById(order._id).populate("customer", "name email").populate("restaurant", "name");
   await sendOrderUpdate(assignedOrder, "Rider assigned", "A rider has accepted your SmartFood Narowal delivery.");
+  await notifyOrderParticipants(
+    await Order.findById(order._id)
+      .populate("customer", "name email")
+      .populate("restaurant", "name owner")
+      .populate({ path: "rider", populate: { path: "user", select: "name email" } }),
+    "Rider assigned",
+    "A rider has accepted this SmartFood Narowal delivery."
+  );
   return successResponse(res, "Order accepted successfully", order);
 };
 
@@ -332,6 +349,14 @@ exports.verifyDelivery = async (req, res) => {
   emitOrderUpdate(req, order);
   const deliveredOrder = await Order.findById(order._id).populate("customer", "name email").populate("restaurant", "name");
   await sendOrderUpdate(deliveredOrder, "Order delivered", "Your SmartFood Narowal order has been delivered. Thank you!");
+  await notifyOrderParticipants(
+    await Order.findById(order._id)
+      .populate("customer", "name email")
+      .populate("restaurant", "name owner")
+      .populate({ path: "rider", populate: { path: "user", select: "name email" } }),
+    "Order delivered",
+    "SmartFood Narowal delivery completed with OTP verification."
+  );
 
   return successResponse(res, "Delivery verified successfully", order);
 };

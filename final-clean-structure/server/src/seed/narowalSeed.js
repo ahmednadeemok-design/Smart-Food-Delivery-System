@@ -13,6 +13,9 @@ const Subscription = require("../models/Subscription");
 const TrustScore = require("../models/TrustScore");
 const DeliveryVerification = require("../models/DeliveryVerification");
 const AdminAuditLog = require("../models/AdminAuditLog");
+const Campaign = require("../models/Campaign");
+const SupportTicket = require("../models/SupportTicket");
+const Notification = require("../models/Notification");
 const { calculateOrderFinancials } = require("../services/financeService");
 
 // approximate coordinates for demo
@@ -310,6 +313,9 @@ const seed = async () => {
     TrustScore.deleteMany({}),
     DeliveryVerification.deleteMany({}),
     AdminAuditLog.deleteMany({}),
+    Campaign.deleteMany({}),
+    SupportTicket.deleteMany({}),
+    Notification.deleteMany({}),
   ]);
 
   const usersByEmail = {};
@@ -443,6 +449,31 @@ const seed = async () => {
       itemCount += 1;
     }
   }
+
+  await Campaign.create([
+    {
+      restaurant: restaurantsByName["ZFC Narowal"]._id,
+      title: "Railway Road Crunch Deal",
+      description: "Launch offer for ZFC Narowal customers ordering COD.",
+      discountType: "percent",
+      discountValue: 10,
+      appliesTo: "restaurant",
+      isActive: true,
+      startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    },
+    {
+      restaurant: restaurantsByName["Palmer Restaurant"]._id,
+      title: "Family Dinner Saver",
+      description: "SmartFood partner campaign for Palmer dinner orders.",
+      discountType: "fixed",
+      discountValue: 150,
+      appliesTo: "restaurant",
+      isActive: true,
+      startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+    },
+  ]);
 
   const demoOrders = [
     {
@@ -610,6 +641,15 @@ const seed = async () => {
       complaintCount += 1;
     }
   }
+
+  await SupportTicket.create({
+    restaurant: restaurantsByName["ZFC Narowal"]._id,
+    owner: ownersByRestaurant["ZFC Narowal"]._id,
+    type: "technical_issue",
+    description: "Need help confirming rider pickup visibility after ready orders.",
+    status: "open",
+  });
+  await Restaurant.findByIdAndUpdate(restaurantsByName["ZFC Narowal"]._id, { $inc: { supportTicketCount: 1 } });
 
   console.log(
     `Narowal clean seed completed: reset target collections and inserted ${restaurantCount} restaurant owners, ${restaurantCount} restaurants, ${itemCount} menu items, ${demoUsers.length} platform users, 2 riders, ${orderCount} orders, and ${complaintCount} complaints.`

@@ -46,6 +46,7 @@ app.use("/api/payments", require("./routes/paymentRoutes"));
 app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/reviews", require("./routes/reviewRoutes"));
 app.use("/api/system", require("./routes/systemRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 
 app.use((req, res, next) => {
