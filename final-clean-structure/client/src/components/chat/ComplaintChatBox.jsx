@@ -9,9 +9,10 @@ export default function ComplaintChatBox() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getMyOrders()
+    getMyOrders({ view: "history", limit: 50 })
       .then((res) => {
-        const userOrders = res.data.data || [];
+        const payload = res.data.data || {};
+        const userOrders = payload.orders || (Array.isArray(payload) ? payload : []);
         setOrders(userOrders);
         setForm((prev) => ({ ...prev, order: prev.order || userOrders[0]?._id || "" }));
       })

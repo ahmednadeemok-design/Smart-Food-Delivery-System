@@ -20,12 +20,18 @@ const toTableOrder = (order) => ({
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
+  const [view, setView] = useState("active");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
 
   const loadOrders = async () => {
     try {
-      const res = await getRestaurantOrders();
-      const restaurantOrders = res.data.data || [];
+      const res = await getRestaurantOrders({ view, status, page, limit: 20 });
+      const payload = res.data.data || {};
+      const restaurantOrders = payload.orders || (Array.isArray(payload) ? payload : []);
       setOrders(restaurantOrders.map(toTableOrder));
+      setPagination(payload.pagination || { page: 1, pages: 1, total: restaurantOrders.length });
     } catch (err) {
       toast.error(err.message);
       setOrders([]);
@@ -54,7 +60,7 @@ export default function Orders() {
       socket.off("restaurant:order-cancelled", reload);
       socket.off("restaurant:rider-assigned", reload);
     };
-  }, []);
+  }, [view, status, page]);
 
   const updateStatus = async (orderId, status) => {
     setOrders((prev) => prev.map((order) => order._id === orderId ? { ...order, status } : order));
@@ -71,8 +77,23 @@ export default function Orders() {
     <section className="page">
       <div className="container">
         <h1>Orders</h1>
-        <p className="muted">Accept, prepare, mark ready, and reduce late delivery issues.</p>
-        <OrderTable orders={orders} onStatusChange={updateStatus} />
+        <p className="muted">Live kitchen queue is separate from completed and cancelled order history.</p>
+        <div className="card form" style={{ marginBottom: 18 }}>
+          <div className="action-row">
+            <button className={`btn ${view === "active" ? "" : "outline"}`} onClick={() => { setView("active"); setStatus(""); setPage(1); }}>Live Kitchen Queue</button>
+            <button className={`btn ${view === "history" ? "" : "outline"}`} onClick={() => { setView("history"); setStatus(""); setPage(1); }}>Completed / Cancelled</button>
+          </div>
+          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+            <option value="">All statuses</option>
+            {(view === "active" ? ["pending", "accepted", "preparing", "ready", "assigned", "picked"] : ["delivered", "cancelled", "rejected"]).map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <p className="muted">{pagination.total || 0} orders found. Page {pagination.page || page} of {pagination.pages || 1}.</p>
+        </div>
+        <OrderTable orders={orders} onStatusChange={updateStatus} mode={view} />
+        <div className="action-row" style={{ marginTop: 16 }}>
+          <button className="btn outline" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
+          <button className="btn outline" disabled={page >= (pagination.pages || 1)} onClick={() => setPage((current) => current + 1)}>Next</button>
+        </div>
       </div>
     </section>
   );

@@ -16,7 +16,8 @@ export default function Analytics() {
     Promise.all([getAdminUsers(), getAdminOrders(), getAdminRestaurants(), getAdminRiders()])
       .then(([usersRes, ordersRes, restaurantsRes, ridersRes]) => {
         setUsers(usersRes.data.data || []);
-        setOrders(ordersRes.data.data || []);
+        const orderPayload = ordersRes.data.data || {};
+        setOrders(orderPayload.orders || (Array.isArray(orderPayload) ? orderPayload : []));
         setRestaurants(restaurantsRes.data.data || []);
         setRiders(ridersRes.data.data || []);
       })

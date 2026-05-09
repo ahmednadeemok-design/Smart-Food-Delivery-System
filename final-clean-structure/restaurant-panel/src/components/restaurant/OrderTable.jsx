@@ -1,7 +1,7 @@
 import formatCurrency from "../../utils/formatCurrency.js";
 import StatusBadge from "../common/StatusBadge.jsx";
 
-export default function OrderTable({ orders, onStatusChange }) {
+export default function OrderTable({ orders, onStatusChange, mode = "active" }) {
   const nextActions = {
     pending: [
       { status: "accepted", label: "Accept", className: "btn success" },
@@ -16,7 +16,7 @@ export default function OrderTable({ orders, onStatusChange }) {
       {orders.length === 0 && (
         <div className="empty-state">
           <h3>No restaurant orders yet</h3>
-          <p>New customer orders will appear here.</p>
+          <p>{mode === "active" ? "New customer orders will appear here." : "Completed and cancelled orders will appear here."}</p>
         </div>
       )}
       {orders.map((order) => (
@@ -38,10 +38,10 @@ export default function OrderTable({ orders, onStatusChange }) {
           </div>
           <div className="order-card-footer">
             <p className="muted">
-              {nextActions[order.status] ? "Next action is ready below." : "No restaurant action is needed right now."}
+              {mode !== "active" ? "This order is in history." : nextActions[order.status] ? "Next action is ready below." : "No restaurant action is needed right now."}
             </p>
             <div className="action-row">
-              {(nextActions[order.status] || []).map((action) => (
+              {(mode === "active" ? nextActions[order.status] || [] : []).map((action) => (
                 <button key={action.status} className={action.className} onClick={() => onStatusChange(order._id, action.status)}>
                   {action.label}
                 </button>

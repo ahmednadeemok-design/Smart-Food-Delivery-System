@@ -8,6 +8,13 @@ const { emitAdminRealtime, emitRestaurantRealtime } = require("../services/realt
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { NAROWAL_AREAS, NAROWAL_CENTER, clampLocation, resolveNarowalArea } = require("../constants/narowal");
 const { fallbackMenu, fallbackRestaurants, getFallbackRestaurants } = require("../data/narowalFallbackData");
+const {
+  ACTIVE_ORDER_STATUSES,
+  TERMINAL_ORDER_STATUSES,
+  applyArchiveWindow,
+  buildOrderScopeQuery,
+  paginationFromQuery,
+} = require("../services/orderLifecycleService");
 
 const restaurantPopulate = [
   { path: "customer", select: "name email phone" },
@@ -32,7 +39,7 @@ const isActiveCampaign = (campaign) => {
 const calculateDashboard = async (restaurant) => {
   if (!restaurant) return null;
   const [orders, items, tickets, campaigns] = await Promise.all([
-    Order.find({ restaurant: restaurant._id }).populate(restaurantPopulate).sort("-createdAt"),
+    Order.find({ restaurant: restaurant._id }).populate(restaurantPopulate).sort("-createdAt").limit(100),
     FoodItem.find({ restaurant: restaurant._id }).sort("category name"),
     SupportTicket.find({ restaurant: restaurant._id }).sort("-createdAt").limit(20),
     Campaign.find({ restaurant: restaurant._id }).sort("-createdAt"),
@@ -45,13 +52,13 @@ const calculateDashboard = async (restaurant) => {
   const completed = orders.filter((order) => order.status === "delivered");
   const todayCompleted = completed.filter((order) => new Date(order.deliveredAt || order.updatedAt) >= todayStart);
   const weeklyCompleted = completed.filter((order) => new Date(order.deliveredAt || order.updatedAt) >= weekStart);
-  const activeOrders = orders.filter((order) => ["pending", "accepted", "preparing", "ready", "assigned", "picked"].includes(order.status));
+  const activeOrders = orders.filter((order) => ACTIVE_ORDER_STATUSES.includes(order.status));
   const acceptedLike = orders.filter((order) => ["accepted", "preparing", "ready", "assigned", "picked", "delivered"].includes(order.status)).length;
   const accuracyRate = orders.length ? Math.round((acceptedLike / orders.length) * 100) : restaurant.accuracyRate || 100;
 
   return {
     restaurant,
-    orders,
+    orders: activeOrders,
     items,
     supportTickets: tickets,
     campaigns,
@@ -113,8 +120,24 @@ exports.getMyRestaurants = async (req, res) => {
 };
 
 exports.getMyRestaurantOrders = async (req, res) => {
-  const orders = await Order.find(await orderQueryForOwner(req.user._id)).populate(restaurantPopulate).sort("-createdAt");
-  return successResponse(res, "Restaurant orders fetched successfully", orders);
+  const ownerQuery = await orderQueryForOwner(req.user._id);
+  await applyArchiveWindow(Order, ownerQuery);
+  const view = req.query.view || "active";
+  const scopedQuery = { ...ownerQuery, ...buildOrderScopeQuery({ view, status: req.query.status, search: req.query.q }) };
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const [orders, total] = await Promise.all([
+    Order.find(scopedQuery)
+      .populate(restaurantPopulate)
+      .sort(view === "active" ? { emergencyMode: -1, createdAt: -1 } : { updatedAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Order.countDocuments(scopedQuery),
+  ]);
+  return successResponse(res, "Restaurant orders fetched successfully", {
+    orders,
+    pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+    filters: { view, activeStatuses: ACTIVE_ORDER_STATUSES, historyStatuses: TERMINAL_ORDER_STATUSES },
+  });
 };
 
 exports.getMyRestaurantDashboard = async (req, res) => {

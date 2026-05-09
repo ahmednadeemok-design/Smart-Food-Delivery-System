@@ -27,9 +27,17 @@ const nextStepMessage = (order) => {
 
 export default function OrderTracking() {
   const [orders, setOrders] = useState([]);
+  const [view, setView] = useState("active");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
 
   const loadOrders = () => {
-    getMyOrders().then((res) => setOrders(res.data.data)).catch((err) => toast.error(err.message));
+    getMyOrders({ view, q: query, page, limit: 10 }).then((res) => {
+      const payload = res.data.data || {};
+      setOrders(payload.orders || (Array.isArray(payload) ? payload : []));
+      setPagination(payload.pagination || { page: 1, pages: 1, total: 0 });
+    }).catch((err) => toast.error(err.message));
   };
 
   useEffect(() => {
@@ -53,7 +61,16 @@ export default function OrderTracking() {
       socket.off("customer:rider-nearby", reload);
       socket.off("payment:refund-updated", reload);
     };
-  }, []);
+  }, [view, page]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      loadOrders();
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   const reorder = (order) => {
     order.items?.forEach((item) => {
@@ -110,6 +127,14 @@ export default function OrderTracking() {
             <h1>Order Tracking</h1>
           </div>
           <span className="muted">Realtime status and rider map</span>
+        </div>
+        <div className="card form" style={{ marginBottom: 18 }}>
+          <div className="action-row">
+            <button className={`btn ${view === "active" ? "" : "outline"}`} onClick={() => { setView("active"); setPage(1); }}>Active Orders</button>
+            <button className={`btn ${view === "history" ? "" : "outline"}`} onClick={() => { setView("history"); setPage(1); }}>Order History</button>
+          </div>
+          <input className="input" placeholder="Search by delivery address or payment status" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <p className="muted">{view === "active" ? "Only live orders are shown here." : "Recent delivered, cancelled, and rejected orders appear here first."} {pagination.total || 0} found.</p>
         </div>
         <div className="grid">
           {orders.map((order) => (
@@ -172,7 +197,11 @@ export default function OrderTracking() {
               )}
             </div>
           ))}
-          {orders.length === 0 && <div className="empty-state"><h3>No orders yet</h3><p>Your orders will appear here after checkout.</p></div>}
+          {orders.length === 0 && <div className="empty-state"><h3>{view === "active" ? "No active orders" : "No order history yet"}</h3><p>{view === "active" ? "Your live orders will appear here after checkout." : "Delivered and cancelled orders will appear here."}</p></div>}
+        </div>
+        <div className="action-row" style={{ marginTop: 16 }}>
+          <button className="btn outline" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
+          <button className="btn outline" disabled={page >= (pagination.pages || 1)} onClick={() => setPage((current) => current + 1)}>Next</button>
         </div>
       </div>
     </section>

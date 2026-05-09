@@ -13,6 +13,14 @@ const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { settleCodDelivery } = require("../services/financeService");
 const { sendRestaurantApproval, sendRiderApproval, sendTemporaryPassword, sendOrderUpdate } = require("../utils/emailService");
 const { emitAdminRealtime, emitOrderRealtime, emitRestaurantRealtime, emitRiderRealtime } = require("../services/realtimeService");
+const {
+  ACTIVE_ORDER_STATUSES,
+  TERMINAL_ORDER_STATUSES,
+  applyArchiveWindow,
+  buildOrderScopeQuery,
+  markArchivedIfTerminal,
+  paginationFromQuery,
+} = require("../services/orderLifecycleService");
 
 const clampScore = (score) => Math.max(0, Math.min(100, Number(score)));
 const allowedRoles = ["customer", "rider", "restaurant", "admin"];
@@ -233,9 +241,25 @@ exports.suspendRider = (req, res) => {
 };
 
 exports.listOrders = async (req, res) => {
-  const query = req.query.status ? { status: req.query.status } : {};
-  const orders = await Order.find(query).populate("customer", "name email phone").populate("restaurant", "name address localArea").populate({ path: "rider", populate: { path: "user", select: "name email phone" } }).sort("-createdAt");
-  return successResponse(res, "Admin orders fetched", orders);
+  const view = req.query.view || "active";
+  await applyArchiveWindow(Order);
+  const scopedQuery = buildOrderScopeQuery({ view, status: req.query.status, search: req.query.q });
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const [orders, total] = await Promise.all([
+    Order.find(scopedQuery)
+      .populate("customer", "name email phone")
+      .populate("restaurant", "name address localArea")
+      .populate({ path: "rider", populate: { path: "user", select: "name email phone" } })
+      .sort(view === "active" ? { emergencyMode: -1, createdAt: -1 } : { updatedAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Order.countDocuments(scopedQuery),
+  ]);
+  return successResponse(res, "Admin orders fetched", {
+    orders,
+    pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+    filters: { view, activeStatuses: ACTIVE_ORDER_STATUSES, historyStatuses: TERMINAL_ORDER_STATUSES },
+  });
 };
 
 exports.updateOrder = async (req, res) => {
@@ -247,17 +271,32 @@ exports.updateOrder = async (req, res) => {
   if (req.body.rider !== undefined) {
     const rider = await Rider.findById(req.body.rider);
     if (!rider) return errorResponse(res, "Rider not found", 404);
+    if (rider.isSuspended || rider.isActive === false || rider.approvalStatus !== "approved") {
+      return errorResponse(res, "Rider is not approved for assignment", 400);
+    }
     updates.rider = rider._id;
   }
 
   const order = await Order.findById(req.params.id);
   if (!order) return errorResponse(res, "Order not found", 404);
   Object.assign(order, updates);
+  if (updates.rider && ["ready", "accepted", "preparing"].includes(order.status)) {
+    order.status = "assigned";
+    updates.status = "assigned";
+    order.assignedAt = new Date();
+  }
   if (updates.status) {
     order.statusTimeline.push({ status: updates.status, label: req.body.reason || `Admin forced status ${updates.status}`, at: new Date() });
     if (updates.status === "cancelled") order.paymentStatus = "failed";
+    markArchivedIfTerminal(order);
   }
   await order.save();
+  if (updates.rider) {
+    await Rider.findByIdAndUpdate(updates.rider, {
+      $addToSet: { activeOrders: order._id },
+      $set: { activeOrder: order._id, availabilityStatus: "busy" },
+    });
+  }
   if (updates.status === "delivered") {
     await settleCodDelivery(order);
     await order.save();

@@ -6,6 +6,14 @@ const { corsOptions } = require("./config/cors");
 
 const app = express();
 
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-Frame-Options", "DENY");
+  next();
+});
+
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 

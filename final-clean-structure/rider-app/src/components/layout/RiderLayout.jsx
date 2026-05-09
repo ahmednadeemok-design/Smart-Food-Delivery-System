@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ClipboardList, History, LayoutDashboard, LogIn, LogOut, PackageCheck, Route, ShieldCheck, UserPlus } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogIn, LogOut, PackageCheck, Route, UserPlus } from "lucide-react";
 import { useAuth } from "../../store/AuthContext.jsx";
 import socket, { connectSocket, disconnectSocket } from "../../services/socket.js";
 
@@ -17,8 +17,9 @@ export default function RiderLayout() {
   useEffect(() => {
     if (!isAuthenticated || !token) return undefined;
     connectSocket(token);
-    socket.on("connect", () => socket.emit("join-role-rooms"));
-    return () => socket.off("connect");
+    const handleConnect = () => socket.emit("join-role-rooms");
+    socket.on("connect", handleConnect);
+    return () => socket.off("connect", handleConnect);
   }, [isAuthenticated, token]);
 
   return (
@@ -37,7 +38,6 @@ export default function RiderLayout() {
                 <NavLink to="/active-delivery"><PackageCheck className="nav-icon" />Active</NavLink>
                 <NavLink to="/history"><History className="nav-icon" />History</NavLink>
                 <NavLink to="/multi-order-route"><Route className="nav-icon" />Route</NavLink>
-                <NavLink to="/delivery-verification"><ShieldCheck className="nav-icon" />OTP</NavLink>
                 <span className="badge role-badge"><span className="status-dot" />{user?.role || "rider"}</span>
                 <button className="btn outline" onClick={handleLogout}><LogOut className="nav-icon" />Logout</button>
               </>

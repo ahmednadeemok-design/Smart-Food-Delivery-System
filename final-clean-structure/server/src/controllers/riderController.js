@@ -3,6 +3,7 @@ const Order = require("../models/Order");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { clampLocation } = require("../constants/narowal");
 const { emitAdminRealtime, emitOrderRealtime, emitRiderRealtime } = require("../services/realtimeService");
+const { TERMINAL_ORDER_STATUSES, applyArchiveWindow, paginationFromQuery } = require("../services/orderLifecycleService");
 
 const sanitizeRiderPayload = (body = {}) => ({
   vehicleType: ["bike", "car", "cycle"].includes(body.vehicleType) ? body.vehicleType : "bike",
@@ -170,12 +171,22 @@ exports.getActiveOrder = async (req, res) => {
 exports.getRiderHistory = async (req, res) => {
   const rider = await Rider.findOne({ user: req.user._id });
   if (!rider) return successResponse(res, "No rider profile found", []);
-  const orders = await Order.find({ rider: rider._id, status: { $in: ["delivered", "cancelled", "rejected"] } })
-    .populate("customer", "name phone")
-    .populate("restaurant", "name address localArea")
-    .sort("-updatedAt")
-    .limit(100);
-  return successResponse(res, "Rider delivery history fetched", orders);
+  await applyArchiveWindow(Order, { rider: rider._id });
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const query = { rider: rider._id, status: { $in: TERMINAL_ORDER_STATUSES } };
+  const [orders, total] = await Promise.all([
+    Order.find(query)
+      .populate("customer", "name phone")
+      .populate("restaurant", "name address localArea")
+      .sort("-updatedAt")
+      .skip(skip)
+      .limit(limit),
+    Order.countDocuments(query),
+  ]);
+  return successResponse(res, "Rider delivery history fetched", {
+    orders,
+    pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+  });
 };
 
 exports.getRiderEarnings = async (req, res) => {

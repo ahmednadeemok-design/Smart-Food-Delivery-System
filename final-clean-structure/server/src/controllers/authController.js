@@ -111,11 +111,11 @@ exports.loginUser = async (req, res) => {
     if (!email || !password) return errorResponse(res, "Please provide email and password", 400);
 
     const user = await User.findOne({ email }).select("+password");
-    if (!user) return errorResponse(res, "User not found", 401);
+    if (!user) return errorResponse(res, "Invalid email or password", 401);
     if (user.isBlocked) return errorResponse(res, user.blockReason || "User account is blocked", 403);
 
     const isMatch = await user.matchPassword(password);
-    if (!isMatch) return errorResponse(res, "Invalid password", 401);
+    if (!isMatch) return errorResponse(res, "Invalid email or password", 401);
 
     const token = user.getSignedJwtToken();
 

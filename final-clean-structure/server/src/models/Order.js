@@ -72,8 +72,15 @@ const orderSchema = new mongoose.Schema(
     assignedAt: Date,
     pickedAt: Date,
     deliveredAt: Date,
+    isArchived: { type: Boolean, default: false, index: true },
+    archivedAt: Date,
   },
   { timestamps: true }
 );
+
+orderSchema.index({ status: 1, isArchived: 1, createdAt: -1 });
+orderSchema.index({ customer: 1, status: 1, createdAt: -1 });
+orderSchema.index({ restaurant: 1, status: 1, createdAt: -1 });
+orderSchema.index({ rider: 1, status: 1, updatedAt: -1 });
 
 module.exports = mongoose.model("Order", orderSchema);

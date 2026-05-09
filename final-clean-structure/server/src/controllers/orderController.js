@@ -11,11 +11,18 @@ const { calculateCouponDiscount, clampLocation, isNarowalAddress } = require("..
 const { sendOrderUpdate } = require("../utils/emailService");
 const { createNotification, notifyOrderParticipants } = require("../services/notificationService");
 const { emitOrderRealtime, emitRiderRealtime } = require("../services/realtimeService");
+const {
+  ACTIVE_ORDER_STATUSES,
+  TERMINAL_ORDER_STATUSES,
+  applyArchiveWindow,
+  buildOrderScopeQuery,
+  markArchivedIfTerminal,
+  paginationFromQuery,
+} = require("../services/orderLifecycleService");
 
 const emitOrderUpdate = (req, order, event = "order-status-updated") => {
   const io = req.app.get("io");
   if (!io || !order?._id) return;
-  io.emit(event, { orderId: order._id, status: order.status, order });
   io.to(`order:${order._id}`).emit(event, { orderId: order._id, status: order.status, order });
   emitOrderRealtime(req, event, order);
 };
@@ -182,12 +189,25 @@ exports.getMyOrders = async (req, res) => {
     query = restaurants.length ? { restaurant: { $in: restaurants.map((restaurant) => restaurant._id) } } : { _id: null };
   }
 
-  const orders = await Order.find(query)
-    .populate("customer", "name email phone")
-    .populate("restaurant")
-    .populate({ path: "rider", populate: { path: "user", select: "name phone email" } })
-    .sort("-createdAt");
-  return successResponse(res, "Orders fetched successfully", orders);
+  await applyArchiveWindow(Order, query);
+  const view = req.query.view || "history";
+  const scopedQuery = { ...query, ...buildOrderScopeQuery({ view, status: req.query.status, search: req.query.q }) };
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const [orders, total] = await Promise.all([
+    Order.find(scopedQuery)
+      .populate("customer", "name email phone")
+      .populate("restaurant")
+      .populate({ path: "rider", populate: { path: "user", select: "name phone email" } })
+      .sort(view === "active" ? { createdAt: -1 } : { updatedAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Order.countDocuments(scopedQuery),
+  ]);
+  return successResponse(res, "Orders fetched successfully", {
+    orders,
+    pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+    filters: { view, activeStatuses: ACTIVE_ORDER_STATUSES, historyStatuses: TERMINAL_ORDER_STATUSES },
+  });
 };
 
 exports.getOrderById = async (req, res) => {
@@ -226,6 +246,7 @@ exports.cancelMyOrder = async (req, res) => {
   order.status = "cancelled";
   order.paymentStatus = order.paymentMethod === "cod" ? "failed" : "refund_pending";
   order.refundStatus = order.paymentMethod === "cod" ? "none" : "requested";
+  markArchivedIfTerminal(order);
   order.statusTimeline.push({ status: "cancelled", label: req.body.reason || "Cancelled by customer before preparation", at: new Date() });
   await order.save();
   const populatedOrder = await Order.findById(order._id)
@@ -277,6 +298,7 @@ exports.updateOrderStatus = async (req, res) => {
     await Restaurant.findByIdAndUpdate(order.restaurant, { $inc: { cancelledOrders: 1 } });
   }
   if (req.body.status === "delivered") order.deliveredAt = new Date();
+  markArchivedIfTerminal(order);
   await order.save();
   if (req.body.status === "delivered" && order.rider) {
     await Rider.findByIdAndUpdate(order.rider, { $pull: { activeOrders: order._id }, $inc: { completedDeliveries: 1 } });
@@ -297,9 +319,10 @@ exports.getAvailableOrders = async (req, res) => {
   const rider = await Rider.findOne({ user: req.user._id });
   const orders = await Order.find({
     status: "ready",
+    isArchived: { $ne: true },
     ...(rider ? { rejectedByRiders: { $ne: rider._id } } : {}),
     $or: [{ rider: { $exists: false } }, { rider: null }],
-  }).populate("restaurant customer", "name address location phone").sort({ emergencyMode: -1, createdAt: 1 });
+  }).populate("restaurant customer", "name address location phone").sort({ emergencyMode: -1, createdAt: 1 }).limit(50);
 
   return successResponse(res, "Available orders fetched successfully", orders);
 };
@@ -360,11 +383,15 @@ exports.verifyDelivery = async (req, res) => {
   }
 
   if (!["assigned", "picked"].includes(order.status)) return errorResponse(res, "Delivery OTP can only be verified after rider assignment or pickup", 400);
-  if (!verifyOTP(order.otp, req.body.otp)) return errorResponse(res, "Invalid delivery OTP", 400);
+  if (!verifyOTP(order.otp, req.body.otp)) {
+    emitOrderRealtime(req, "rider:otp-verification-result", order, { ok: false, message: "Invalid delivery OTP" });
+    return errorResponse(res, "Invalid delivery OTP", 400);
+  }
 
   order.status = "delivered";
   order.otpVerified = true;
   order.deliveredAt = new Date();
+  markArchivedIfTerminal(order);
   order.statusTimeline.push({ status: "delivered", label: "Delivery completed with OTP", at: new Date() });
   await settleCodDelivery(order);
   await order.save();

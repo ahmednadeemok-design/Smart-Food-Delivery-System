@@ -17,8 +17,9 @@ export default function RestaurantLayout() {
   useEffect(() => {
     if (!isAuthenticated || !token) return undefined;
     connectSocket(token);
-    socket.on("connect", () => socket.emit("join-role-rooms"));
-    return () => socket.off("connect");
+    const handleConnect = () => socket.emit("join-role-rooms");
+    socket.on("connect", handleConnect);
+    return () => socket.off("connect", handleConnect);
   }, [isAuthenticated, token]);
 
   return (

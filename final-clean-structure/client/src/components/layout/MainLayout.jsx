@@ -17,9 +17,10 @@ export default function MainLayout() {
   useEffect(() => {
     if (!isAuthenticated || !token) return undefined;
     connectSocket(token);
-    socket.on("connect", () => socket.emit("join-role-rooms"));
+    const handleConnect = () => socket.emit("join-role-rooms");
+    socket.on("connect", handleConnect);
     return () => {
-      socket.off("connect");
+      socket.off("connect", handleConnect);
     };
   }, [isAuthenticated, token]);
 

@@ -10,9 +10,19 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [riders, setRiders] = useState([]);
   const [status, setStatus] = useState("");
+  const [view, setView] = useState("active");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
 
   const loadOrders = () => {
-    getAdminOrders(status).then((res) => setOrders(res.data.data || [])).catch((err) => toast.error(err.message));
+    getAdminOrders({ view, status, q: query, page, limit: 25 })
+      .then((res) => {
+        const payload = res.data.data || {};
+        setOrders(payload.orders || (Array.isArray(payload) ? payload : []));
+        setPagination(payload.pagination || { page: 1, pages: 1, total: 0 });
+      })
+      .catch((err) => toast.error(err.message));
   };
 
   useEffect(() => {
@@ -32,7 +42,16 @@ export default function Orders() {
       socket.off("admin:order-lifecycle", reload);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, view, page]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      loadOrders();
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   const updateOrder = async (id, payload) => {
     try {
@@ -73,14 +92,24 @@ export default function Orders() {
     <section className="page">
       <div className="container">
         <h1>Order Control</h1>
-        <p className="muted">Monitor, filter, cancel, force-update status, and assign/reassign riders.</p>
+        <p className="muted">Live operations stay focused here. Delivered, cancelled, and rejected orders move into the archive/history view.</p>
         <div className="card form" style={{ marginBottom: 18 }}>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <div className="action-row">
+            <button className={`btn ${view === "active" ? "" : "outline"}`} onClick={() => { setView("active"); setStatus(""); setPage(1); }}>Active Orders</button>
+            <button className={`btn ${view === "archived" ? "" : "outline"}`} onClick={() => { setView("archived"); setStatus(""); setPage(1); }}>Archived Orders</button>
+          </div>
+          <input className="input" placeholder="Search delivery address, payment, or status" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
             <option value="">All statuses</option>
-            {["pending", "accepted", "preparing", "ready", "assigned", "picked", "delivered", "cancelled", "rejected"].map((item) => <option key={item} value={item}>{item}</option>)}
+            {(view === "active" ? ["pending", "accepted", "preparing", "ready", "assigned", "picked"] : ["delivered", "cancelled", "rejected"]).map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
+          <p className="muted">{pagination.total || 0} orders found. Page {pagination.page || page} of {pagination.pages || 1}.</p>
         </div>
         <DataTable columns={columns} rows={orders} />
+        <div className="action-row" style={{ marginTop: 16 }}>
+          <button className="btn outline" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
+          <button className="btn outline" disabled={page >= (pagination.pages || 1)} onClick={() => setPage((current) => current + 1)}>Next</button>
+        </div>
       </div>
     </section>
   );

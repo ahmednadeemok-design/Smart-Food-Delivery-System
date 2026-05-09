@@ -21,7 +21,7 @@ export const updateRestaurantSupportTicket = (id, payload) => api.patch(`/admin/
 export const getAdminRiders = () => api.get("/admin/riders");
 export const updateAdminRider = (id, payload) => api.patch(`/admin/riders/${id}`, payload);
 
-export const getAdminOrders = (status = "") => api.get(`/admin/orders${status ? `?status=${status}` : ""}`);
+export const getAdminOrders = (params = {}) => api.get("/admin/orders", { params });
 export const updateAdminOrder = (id, payload) => api.patch(`/admin/orders/${id}`, payload);
 
 export const getAdminComplaints = () => api.get("/admin/complaints");

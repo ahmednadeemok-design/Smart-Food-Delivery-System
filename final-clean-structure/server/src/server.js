@@ -19,6 +19,10 @@ const io = new Server(httpServer, {
     methods: corsOptions.methods,
     credentials: true,
   },
+  transports: ["websocket", "polling"],
+  pingInterval: 25000,
+  pingTimeout: 30000,
+  connectTimeout: 15000,
 });
 
 initSocket(io);
@@ -40,5 +44,10 @@ server.on("error", (err) => {
 
 process.on("unhandledRejection", (err) => {
   console.error(`Unhandled Rejection: ${err.message}`);
-  server.close(() => process.exit(1));
+  console.error(err.stack || err);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error(`Uncaught Exception: ${err.message}`);
+  console.error(err.stack || err);
 });

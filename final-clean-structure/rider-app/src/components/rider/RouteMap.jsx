@@ -17,7 +17,7 @@ const icon = new L.Icon({
   iconAnchor: [12, 41],
 });
 
-export default function RouteMap({ points = DEFAULT_ROUTE }) {
+export default function RouteMap({ points = DEFAULT_ROUTE, title = "Narowal Live Route", description = "Pickup, drop-off, and route line for Narowal deliveries." }) {
   const safePoints = (points.length ? points : DEFAULT_ROUTE)
     .filter((point) => validateCoordinates(point))
     .map((point) => ({ ...point, ...normalizeLocation(point) }));
@@ -26,8 +26,8 @@ export default function RouteMap({ points = DEFAULT_ROUTE }) {
 
   return (
     <div className="card">
-      <h3>Narowal Live Route</h3>
-      <p className="muted">Pickup, drop-off, and route line for Narowal deliveries.</p>
+      <h3>{title}</h3>
+      <p className="muted">{description}</p>
       <div className="route-line">
         {safePoints.map((point, index) => <span className="badge" key={point.label}>{index + 1}. {point.label}</span>)}
       </div>
