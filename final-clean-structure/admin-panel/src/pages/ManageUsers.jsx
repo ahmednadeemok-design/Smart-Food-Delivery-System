@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import DataTable from "../components/admin/DataTable.jsx";
 import { deleteAdminUser, getAdminUsers, issuePasswordReset, updateAdminUser } from "../services/adminService.js";
 import { toast } from "../utils/toast.js";
+import StatusBadge from "../components/common/StatusBadge.jsx";
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -45,8 +46,8 @@ export default function ManageUsers() {
   };
 
   const columns = [
-    { key: "name", label: "Name" },
-    { key: "email", label: "Email" },
+    { key: "name", label: "Name", render: (row) => <div className="cell-main"><span className="cell-title">{row.name}</span><span className="cell-sub">{row.phone || "No phone"}</span></div> },
+    { key: "email", label: "Email", render: (row) => <span className="cell-sub">{row.email}</span> },
     {
       key: "role",
       label: "Role",
@@ -56,7 +57,7 @@ export default function ManageUsers() {
         </select>
       ),
     },
-    { key: "status", label: "Status", render: (row) => <span className={`badge ${row.isBlocked ? "danger" : "success"}`}>{row.isBlocked ? "Blocked" : "Active"}</span> },
+    { key: "status", label: "Status", render: (row) => <StatusBadge value={row.isBlocked ? "Blocked" : "Active"} /> },
     { key: "trustScore", label: "Trust Score", render: (row) => `${row.trustScore || 100}%` },
     {
       key: "actions",

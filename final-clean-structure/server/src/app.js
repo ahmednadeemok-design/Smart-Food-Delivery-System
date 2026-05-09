@@ -35,6 +35,27 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.use("/api", (req, res, next) => {
+  const mongoose = require("mongoose");
+  if (mongoose.connection.readyState === 1) return next();
+  const allowOfflineRead =
+    req.method === "GET" &&
+    (
+      req.path === "/restaurants" ||
+      /^\/restaurants\/[^/]+$/.test(req.path) ||
+      /^\/restaurants\/[^/]+\/(items|menu)$/.test(req.path) ||
+      req.path.startsWith("/system")
+    );
+  const allowOfflineAI = req.path.startsWith("/ai");
+  if (allowOfflineRead || allowOfflineAI) return next();
+
+  return res.status(503).json({
+    success: false,
+    message: "Database unavailable. Start MongoDB and retry.",
+    data: {},
+  });
+});
+
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/restaurants", require("./routes/restaurantRoutes"));

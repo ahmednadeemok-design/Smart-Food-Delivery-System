@@ -1,4 +1,5 @@
 import formatCurrency from "../../utils/formatCurrency.js";
+import StatusBadge from "../common/StatusBadge.jsx";
 
 export default function FoodCard({ item, onAdd, variant = "menu" }) {
   const isRecommended = variant === "recommended";
@@ -23,7 +24,7 @@ export default function FoodCard({ item, onAdd, variant = "menu" }) {
           <span className="badge">{item.calories || 0} kcal</span>
           <span className="badge">Taste {item.tasteScore || 100}%</span>
           {item.addOns?.length > 0 && <span className="badge">Add-ons</span>}
-          {item.isAvailable === false && <span className="badge danger">Unavailable</span>}
+          {item.isAvailable === false && <StatusBadge value="Unavailable" />}
         </div>
         <div className="recommended-food-footer">
           <p className="food-price"><b>{formatCurrency(item.price)}</b></p>

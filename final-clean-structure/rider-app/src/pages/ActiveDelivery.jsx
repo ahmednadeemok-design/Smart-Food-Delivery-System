@@ -4,6 +4,7 @@ import RouteMap from "../components/rider/RouteMap.jsx";
 import { markPicked, verifyDelivery } from "../services/orderService.js";
 import { getActiveOrder, updateRiderLocation } from "../services/riderService.js";
 import { toast } from "../utils/toast.js";
+import StatusBadge from "../components/common/StatusBadge.jsx";
 
 const NAROWAL_CENTER = { lat: 32.1020, lng: 74.8740 };
 
@@ -39,7 +40,14 @@ export default function ActiveDelivery() {
 
   useEffect(() => {
     loadActiveOrder();
-    socket.connect();
+    socket.emit("join-role-rooms");
+    const reload = (payload) => {
+      if (payload?.ok) toast.success("OTP verified successfully");
+      loadActiveOrder();
+    };
+    socket.on("rider:order-assigned", reload);
+    socket.on("order-status-updated", reload);
+    socket.on("rider:otp-verification-result", reload);
     const interval = setInterval(() => {
       if (!navigator.geolocation) {
         updateRiderLocation(location, true).catch(() => {});
@@ -52,7 +60,12 @@ export default function ActiveDelivery() {
         setLocation(next);
       }, () => updateRiderLocation(location, true).catch(() => {}), { enableHighAccuracy: true, timeout: 6000 });
     }, 5000);
-    return () => { clearInterval(interval); socket.disconnect(); };
+    return () => {
+      clearInterval(interval);
+      socket.off("rider:order-assigned", reload);
+      socket.off("order-status-updated", reload);
+      socket.off("rider:otp-verification-result", reload);
+    };
   }, []);
 
   const moveStatus = async (status) => {
@@ -85,21 +98,24 @@ export default function ActiveDelivery() {
       <div className="container">
         <h1>Active Delivery</h1>
         <div className="grid grid-2">
-          <div className="card">
-            <span className="badge">{activeOrder?.status || "No Active Order"}</span>
-            <h2>Current Location</h2>
-            <p>Lat: {location.lat}</p>
-            <p>Lng: {location.lng}</p>
-            {activeOrder && <p>Order #{activeOrder._id.slice(-6)}</p>}
-            {activeOrder?.restaurant && <p><b>Pickup:</b> {activeOrder.restaurant.name}, {activeOrder.restaurant.address}</p>}
-            {activeOrder && <p><b>Drop:</b> {activeOrder.deliveryAddress}</p>}
-            {activeOrder && <p><b>Payment:</b> {String(activeOrder.paymentMethod || "cod").toUpperCase()} - collect {activeOrder.paymentMethod === "cod" ? `Rs. ${Number(activeOrder.totalAmount || 0).toLocaleString("en-PK")}` : "online paid"}</p>}
+          <div className="card rider-delivery-card">
+            <StatusBadge value={activeOrder?.status || "No Active Order"} />
+            <h2>{activeOrder ? `Order #${activeOrder._id.slice(-6)}` : "No active delivery"}</h2>
+            {!activeOrder && <p className="muted">Accepted deliveries will appear here with pickup, drop-off, payment, and OTP actions.</p>}
+            {activeOrder && (
+              <div className="delivery-detail-grid">
+                <div className="detail-tile"><small>Pickup Location</small><b>{activeOrder.restaurant?.name || "Restaurant"}</b><p className="muted">{activeOrder.restaurant?.address || "Restaurant pickup"}</p></div>
+                <div className="detail-tile"><small>Drop-off Location</small><b>{activeOrder.deliveryAddress}</b></div>
+                <div className="detail-tile"><small>Payment</small><b>{String(activeOrder.paymentMethod || "cod").toUpperCase()}</b><p className="muted">{activeOrder.paymentMethod === "cod" ? `Collect Rs. ${Number(activeOrder.totalAmount || 0).toLocaleString("en-PK")}` : "Online paid"}</p></div>
+                <div className="detail-tile"><small>Your Location</small><b>{Number(location.lat).toFixed(4)}, {Number(location.lng).toFixed(4)}</b></div>
+              </div>
+            )}
             {activeOrder && <div className="action-row" style={{ marginBottom: 12 }}><button className="btn outline" type="button">Contact Restaurant</button><button className="btn outline" type="button">Contact Customer</button></div>}
-            {activeOrder?.status === "assigned" && <button className="btn" onClick={() => moveStatus("picked")}>Confirm Pickup</button>}
+            {activeOrder?.status === "assigned" && <button className="btn rider-primary-action" onClick={() => moveStatus("picked")}>Mark Picked</button>}
             {["assigned", "picked"].includes(activeOrder?.status) && (
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <div className="otp-action">
                 <input className="input" placeholder="Customer OTP" value={otp} onChange={(e) => setOtp(e.target.value)} />
-                <button className="btn outline" onClick={completeDelivery}>Verify Delivery</button>
+                <button className="btn outline" onClick={completeDelivery}>Verify OTP</button>
               </div>
             )}
           </div>

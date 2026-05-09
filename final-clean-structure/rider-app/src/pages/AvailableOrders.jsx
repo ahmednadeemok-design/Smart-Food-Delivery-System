@@ -5,6 +5,7 @@ import RouteMap from "../components/rider/RouteMap.jsx";
 import { acceptOrder, getAvailableOrders, rejectOrder } from "../services/orderService.js";
 import { getMyRiderProfile } from "../services/riderService.js";
 import { toast } from "../utils/toast.js";
+import socket from "../services/socket.js";
 
 const toCardOrder = (order) => ({
   _id: order._id,
@@ -52,8 +53,21 @@ export default function AvailableOrders() {
       loadOrders();
     };
     loadProfileAndOrders();
+    const reload = (payload) => {
+      if (payload?.status === "ready") toast.success("New ready order available");
+      loadOrders();
+    };
+    socket.emit("join-role-rooms");
+    socket.on("rider:new-ready-order", reload);
+    socket.on("rider:ready-order-removed", reload);
+    socket.on("rider:order-assigned", reload);
     const interval = setInterval(loadProfileAndOrders, 12000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      socket.off("rider:new-ready-order", reload);
+      socket.off("rider:ready-order-removed", reload);
+      socket.off("rider:order-assigned", reload);
+    };
   }, []);
 
   const handleAcceptOrder = async (order) => {
@@ -103,7 +117,7 @@ export default function AvailableOrders() {
         )}
         {profile && profile.approvalStatus === "pending" && <div className="card" style={{ marginBottom: 18 }}><span className="badge warning">Pending approval</span><p className="muted">Admin approval is required before accepting orders.</p></div>}
         {profile && (profile.isSuspended || profile.approvalStatus === "suspended") && <div className="card" style={{ marginBottom: 18 }}><span className="badge danger">Suspended</span><p className="muted">Suspended riders cannot accept delivery jobs.</p></div>}
-        {profile && !profile.isOnline && <div className="card" style={{ marginBottom: 18 }}>Go online from the rider dashboard to accept available orders.</div>}
+        {profile && !profile.isOnline && <div className="card" style={{ marginBottom: 18 }}><b>Go Online first</b><p className="muted">Go online from the rider dashboard to accept available orders.</p></div>}
         <div className="grid">
           {orders.map((order) => (
             <div className="grid grid-2" key={order._id}>
@@ -114,7 +128,7 @@ export default function AvailableOrders() {
               ]} />
             </div>
           ))}
-          {orders.length === 0 && <div className="card">No available orders right now.</div>}
+          {orders.length === 0 && <div className="empty-state"><h3>No available deliveries</h3><p>No ready orders yet. Stay online and check again soon.</p></div>}
         </div>
       </div>
     </section>

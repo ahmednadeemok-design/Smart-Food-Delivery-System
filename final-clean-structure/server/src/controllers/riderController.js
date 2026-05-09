@@ -2,6 +2,7 @@ const Rider = require("../models/Rider");
 const Order = require("../models/Order");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { clampLocation } = require("../constants/narowal");
+const { emitAdminRealtime, emitOrderRealtime, emitRiderRealtime } = require("../services/realtimeService");
 
 const sanitizeRiderPayload = (body = {}) => ({
   vehicleType: ["bike", "car", "cycle"].includes(body.vehicleType) ? body.vehicleType : "bike",
@@ -86,7 +87,16 @@ exports.updateLocation = async (req, res) => {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
     const io = req.app.get("io");
-    if (io) io.emit("rider-location-updated", { riderId: rider._id, location: rider.currentLocation, rider });
+    if (io) {
+      io.emit("rider-location-updated", { riderId: rider._id, location: rider.currentLocation, rider });
+      emitRiderRealtime(req, "rider:location-updated", rider, { location: rider.currentLocation });
+      emitAdminRealtime(req, "admin:rider-location-updated", { riderId: rider._id, location: rider.currentLocation, rider });
+      const activeOrder = await Order.findOne({ rider: rider._id, status: { $in: activeStatuses } })
+        .populate("customer", "name email phone")
+        .populate("restaurant")
+        .populate({ path: "rider", populate: { path: "user", select: "name phone email" } });
+      if (activeOrder) emitOrderRealtime(req, "customer:rider-nearby", activeOrder, { location: rider.currentLocation });
+    }
     return successResponse(res, "Rider location updated", rider);
   } catch (error) {
     return errorResponse(res, "Unable to update rider location", 500);
@@ -113,6 +123,8 @@ exports.updateAvailability = async (req, res) => {
       },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
+    emitRiderRealtime(req, "rider:availability-updated", rider);
+    emitAdminRealtime(req, "admin:rider-online-state", { riderId: rider._id, isOnline: rider.isOnline, rider });
     return successResponse(res, rider.isOnline ? "Rider is online" : "Rider is offline", rider);
   } catch (error) {
     return errorResponse(res, "Unable to update rider availability", 500);

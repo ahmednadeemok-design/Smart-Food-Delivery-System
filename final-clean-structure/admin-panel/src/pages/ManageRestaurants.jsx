@@ -10,6 +10,8 @@ import {
 } from "../services/adminService.js";
 import { toast } from "../utils/toast.js";
 import formatCurrency from "../utils/formatCurrency.js";
+import StatusBadge from "../components/common/StatusBadge.jsx";
+import socket from "../services/socket.js";
 
 export default function ManageRestaurants() {
   const [restaurants, setRestaurants] = useState([]);
@@ -23,7 +25,19 @@ export default function ManageRestaurants() {
     getRestaurantSupportTickets().then((res) => setSupportTickets(res.data.data || [])).catch(() => {});
   };
 
-  useEffect(() => loadRestaurants(), []);
+  useEffect(() => {
+    loadRestaurants();
+    const reload = () => loadRestaurants();
+    socket.emit("join-role-rooms");
+    socket.on("admin:restaurant-updated", reload);
+    socket.on("restaurant:state-updated", reload);
+    socket.on("admin:support-ticket-updated", reload);
+    return () => {
+      socket.off("admin:restaurant-updated", reload);
+      socket.off("restaurant:state-updated", reload);
+      socket.off("admin:support-ticket-updated", reload);
+    };
+  }, []);
 
   const updateRestaurant = async (id, payload) => {
     try {
@@ -73,13 +87,13 @@ export default function ManageRestaurants() {
   };
 
   const columns = [
-    { key: "name", label: "Restaurant" },
-    { key: "owner", label: "Owner", render: (row) => `${row.owner?.name || "Owner"} (${row.owner?.email || "no email"})` },
+    { key: "name", label: "Restaurant", render: (row) => <div className="cell-main"><span className="cell-title">{row.name}</span><span className="cell-sub">{row.address || "Address unavailable"}</span></div> },
+    { key: "owner", label: "Owner", render: (row) => <div className="cell-main"><span className="cell-title">{row.owner?.name || "Owner"}</span><span className="cell-sub">{row.owner?.email || "No email"}</span></div> },
     { key: "ownerPhone", label: "Owner Phone", render: (row) => row.owner?.phone || "-" },
-    { key: "isOpen", label: "Open", render: (row) => <span className={`badge ${row.isOpen === false ? "warning" : "success"}`}>{row.isOpen === false ? "Closed" : "Open"}</span> },
-    { key: "approvalStatus", label: "Approval", render: (row) => <span className={`badge ${row.approvalStatus === "approved" ? "success" : row.approvalStatus === "rejected" ? "danger" : "warning"}`}>{row.approvalStatus || "pending"}</span> },
-    { key: "isActive", label: "Active", render: (row) => <span className={`badge ${row.isActive === false ? "danger" : "success"}`}>{row.isActive === false ? "Inactive" : "Active"}</span> },
-    { key: "kitchenLoad", label: "Kitchen Load", render: (row) => <span className="badge">{row.kitchenLoad}</span> },
+    { key: "isOpen", label: "Open", render: (row) => <StatusBadge value={row.isOpen === false ? "Closed" : "Open"} /> },
+    { key: "approvalStatus", label: "Approval", render: (row) => <StatusBadge value={row.approvalStatus || "pending"} /> },
+    { key: "isActive", label: "Active", render: (row) => <StatusBadge value={row.isActive === false ? "Inactive" : "Active"} /> },
+    { key: "kitchenLoad", label: "Kitchen Load", render: (row) => <StatusBadge value={row.kitchenLoad || "low"} /> },
     { key: "accuracyRate", label: "Accuracy Rate", render: (row) => `${row.accuracyRate || 100}%` },
     { key: "trustScore", label: "Trust Score", render: (row) => `${row.trustScore || 100}%` },
     {
@@ -112,7 +126,7 @@ export default function ManageRestaurants() {
             <div className="grid grid-3">
               {menu.map((item) => (
                 <div className="card" key={item._id}>
-                  <span className={`badge ${item.isAvailable ? "success" : "warning"}`}>{item.isAvailable ? "Available" : "Hidden"}</span>
+                  <StatusBadge value={item.isAvailable ? "Available" : "Hidden"} />
                   <h3>{item.name}</h3>
                   <p>{formatCurrency(item.price)} - {item.calories || 0} kcal</p>
                 </div>
@@ -126,7 +140,7 @@ export default function ManageRestaurants() {
           <div className="grid">
             {supportTickets.map((ticket) => (
               <div className="card" key={ticket._id}>
-                <span className="badge">{ticket.status}</span>
+                <StatusBadge value={ticket.status} />
                 <h3>{ticket.restaurant?.name || "Restaurant"} - {ticket.type?.replace("_", " ")}</h3>
                 <p>{ticket.description}</p>
                 <p className="muted">{ticket.owner?.email || "Owner email unavailable"}</p>

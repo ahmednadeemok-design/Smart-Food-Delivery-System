@@ -4,6 +4,8 @@ import { getAdminPayments, refundAdminPayment } from "../services/adminService.j
 import { calculateRefundAmount } from "../features/refundEngine/refundRules.js";
 import formatCurrency from "../utils/formatCurrency.js";
 import { toast } from "../utils/toast.js";
+import StatusBadge from "../components/common/StatusBadge.jsx";
+import socket from "../services/socket.js";
 
 export default function Refunds() {
   const [payments, setPayments] = useState([]);
@@ -14,7 +16,13 @@ export default function Refunds() {
     getAdminPayments().then((res) => setPayments(res.data.data || [])).catch((err) => toast.error(err.message));
   };
 
-  useEffect(() => loadPayments(), []);
+  useEffect(() => {
+    loadPayments();
+    const reload = () => loadPayments();
+    socket.emit("join-role-rooms");
+    socket.on("admin:refund-updated", reload);
+    return () => socket.off("admin:refund-updated", reload);
+  }, []);
 
   const decideRefund = async (payment, approved) => {
     const reason = window.prompt("Refund reason", approved ? "Complaint approved by admin" : "Refund rejected by admin");
@@ -36,9 +44,9 @@ export default function Refunds() {
     { key: "restaurantRevenue", label: "Restaurant Net", render: (row) => formatCurrency(row.restaurantRevenue || 0) },
     { key: "riderEarning", label: "Rider", render: (row) => formatCurrency(row.riderEarning || 0) },
     { key: "platformCommission", label: "Commission", render: (row) => formatCurrency(row.platformCommission || 0) },
-    { key: "status", label: "Status", render: (row) => <span className={`badge ${row.status === "refunded" ? "warning" : "success"}`}>{row.status}</span> },
-    { key: "refundStatus", label: "Refund", render: (row) => <span className="badge">{row.refundStatus || "none"}</span> },
-    { key: "refundReason", label: "Reason", render: (row) => row.refundReason || "-" },
+    { key: "status", label: "Status", render: (row) => <StatusBadge value={row.status} /> },
+    { key: "refundStatus", label: "Refund", render: (row) => <StatusBadge value={row.refundStatus || "none"} /> },
+    { key: "refundReason", label: "Reason", render: (row) => <span className="cell-sub">{row.refundReason || "-"}</span> },
     {
       key: "actions",
       label: "Actions",

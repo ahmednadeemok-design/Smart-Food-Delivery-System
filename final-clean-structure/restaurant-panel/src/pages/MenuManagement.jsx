@@ -11,6 +11,7 @@ import {
 } from "../services/restaurantService.js";
 import { toast } from "../utils/toast.js";
 import formatCurrency from "../utils/formatCurrency.js";
+import StatusBadge from "../components/common/StatusBadge.jsx";
 
 export default function MenuManagement() {
   const [restaurants, setRestaurants] = useState([]);
@@ -231,7 +232,7 @@ export default function MenuManagement() {
         <div className="grid" style={{ marginTop: 18 }}>
           {items.map((item) => (
             <div className="card" key={item._id}>
-              <span className="badge">{item.isAvailable ? "Available" : "Hidden"}</span>
+              <StatusBadge value={item.isAvailable ? "Available" : "Hidden"} />
               {item.isFeatured && <span className="badge" style={{ marginLeft: 8 }}>Featured</span>}
               <h3>{item.name}</h3>
               <p className="muted">{item.description}</p>

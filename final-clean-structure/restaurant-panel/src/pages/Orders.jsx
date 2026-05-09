@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import OrderTable from "../components/restaurant/OrderTable.jsx";
 import { getRestaurantOrders, updateOrderStatus } from "../services/orderService.js";
 import { toast } from "../utils/toast.js";
+import socket from "../services/socket.js";
 
 const toTableOrder = (order) => ({
   _id: order._id,
@@ -33,8 +34,26 @@ export default function Orders() {
 
   useEffect(() => {
     loadOrders();
+    const reload = (payload) => {
+      if (payload?.status) toast.success(`Order ${payload.status}`);
+      else toast.success("Restaurant orders updated");
+      loadOrders();
+    };
+    socket.emit("join-role-rooms");
+    socket.on("restaurant:new-order", reload);
+    socket.on("order-created", reload);
+    socket.on("order-status-updated", reload);
+    socket.on("restaurant:order-cancelled", reload);
+    socket.on("restaurant:rider-assigned", reload);
     const interval = setInterval(loadOrders, 12000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      socket.off("restaurant:new-order", reload);
+      socket.off("order-created", reload);
+      socket.off("order-status-updated", reload);
+      socket.off("restaurant:order-cancelled", reload);
+      socket.off("restaurant:rider-assigned", reload);
+    };
   }, []);
 
   const updateStatus = async (orderId, status) => {

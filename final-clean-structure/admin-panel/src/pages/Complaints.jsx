@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ComplaintCard from "../components/admin/ComplaintCard.jsx";
 import { getAdminComplaints, updateAdminComplaint } from "../services/adminService.js";
 import { toast } from "../utils/toast.js";
+import socket from "../services/socket.js";
 
 export default function Complaints() {
   const [complaints, setComplaints] = useState([]);
@@ -22,7 +23,13 @@ export default function Complaints() {
     }).catch((err) => toast.error(err.message));
   };
 
-  useEffect(() => loadComplaints(), []);
+  useEffect(() => {
+    loadComplaints();
+    const reload = () => loadComplaints();
+    socket.emit("join-role-rooms");
+    socket.on("admin:complaint-updated", reload);
+    return () => socket.off("admin:complaint-updated", reload);
+  }, []);
 
   const resolve = async (id, status) => {
     setComplaints((prev) => prev.map((c) => c._id === id ? { ...c, status } : c));

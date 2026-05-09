@@ -5,6 +5,25 @@ import formatCurrency from "../utils/formatCurrency.js";
 import { toast } from "../utils/toast.js";
 import { addToCart } from "../store/cartStore.js";
 import SmartMap from "../components/map/SmartMap.jsx";
+import StatusBadge from "../components/common/StatusBadge.jsx";
+
+const OTP_STATUSES = ["ready", "assigned", "picked"];
+
+const nextStepMessage = (order) => {
+  const riderName = order.rider?.user?.name || "your rider";
+  const messages = {
+    pending: "Waiting for the restaurant to accept your order.",
+    accepted: "Restaurant accepted your order and will start preparing soon.",
+    preparing: "Restaurant is preparing your food.",
+    ready: order.rider ? `${riderName} will pick up your order soon.` : "Your food is ready. A rider will be assigned shortly.",
+    assigned: `${riderName} is heading to the restaurant for pickup.`,
+    picked: `${riderName} is on the way to your delivery address.`,
+    delivered: "Order delivered. You can request a refund if something was wrong.",
+    cancelled: "This order was cancelled.",
+    rejected: "The restaurant could not accept this order.",
+  };
+  return messages[order.status] || "We will keep this page updated as your order moves forward.";
+};
 
 export default function OrderTracking() {
   const [orders, setOrders] = useState([]);
@@ -15,11 +34,24 @@ export default function OrderTracking() {
 
   useEffect(() => {
     loadOrders();
-    socket.connect();
-    socket.on("order-status-updated", loadOrders);
+    const reload = (payload) => {
+      if (payload?.status) toast.success(`Order ${payload.status}`);
+      loadOrders();
+    };
+    socket.emit("join-role-rooms");
+    socket.on("order-created", reload);
+    socket.on("customer:order-placed", reload);
+    socket.on("order-status-updated", reload);
+    socket.on("customer:otp-visible", reload);
+    socket.on("customer:rider-nearby", reload);
+    socket.on("payment:refund-updated", reload);
     return () => {
-      socket.off("order-status-updated", loadOrders);
-      socket.disconnect();
+      socket.off("order-created", reload);
+      socket.off("customer:order-placed", reload);
+      socket.off("order-status-updated", reload);
+      socket.off("customer:otp-visible", reload);
+      socket.off("customer:rider-nearby", reload);
+      socket.off("payment:refund-updated", reload);
     };
   }, []);
 
@@ -60,6 +92,15 @@ export default function OrderTracking() {
     }
   };
 
+  const copyOtp = async (otp) => {
+    try {
+      await navigator.clipboard.writeText(String(otp));
+      toast.success("Delivery OTP copied");
+    } catch {
+      toast.error("Copy failed. Please copy the OTP manually.");
+    }
+  };
+
   return (
     <section className="page">
       <div className="container">
@@ -72,14 +113,21 @@ export default function OrderTracking() {
         </div>
         <div className="grid">
           {orders.map((order) => (
-            <div className="card tracking-card" key={order._id}>
+            <div className="card tracking-card tracking-status-card" key={order._id}>
               <div className="tracking-head">
                 <div>
-                  <span className="badge">{order.status}</span>
+                  <StatusBadge value={order.status} />
                   <h3>Order #{order._id.slice(-6)}</h3>
                   <p className="muted">{order.restaurant?.name || "Restaurant"} to {order.deliveryAddress}</p>
                 </div>
                 <div className="tracking-total">{formatCurrency(order.totalAmount)}</div>
+              </div>
+              <div className="next-step">{nextStepMessage(order)}</div>
+              <div className="details-grid">
+                <div className="detail-tile"><small>Restaurant</small><b>{order.restaurant?.name || "Restaurant"}</b></div>
+                <div className="detail-tile"><small>Rider</small><b>{order.rider?.user?.name || "A rider will be assigned after the order is ready."}</b></div>
+                <div className="detail-tile"><small>Delivery Address</small><b>{order.deliveryAddress || "Narowal delivery address"}</b></div>
+                <div className="detail-tile"><small>Payment</small><b>{String(order.paymentMethod || "cod").toUpperCase()} / {order.paymentStatus || "pending"}</b></div>
               </div>
               <div className="tracking-metrics">
                 <span><b>{order.freshnessScore}%</b><small>Freshness</small></span>
@@ -87,6 +135,15 @@ export default function OrderTracking() {
                 <span><b>{formatCurrency(order.deliveryFee || 0)}</b><small>Delivery</small></span>
                 <span><b>{order.paymentStatus || "pending"}</b><small>Payment</small></span>
               </div>
+              {OTP_STATUSES.includes(order.status) && order.otp && (
+                <div className="otp-card">
+                  <StatusBadge value="Delivery OTP" />
+                  <h2>Delivery OTP</h2>
+                  <p>Share this OTP with the rider only when you receive your order.</p>
+                  <div className="otp-code">{order.otp}</div>
+                  <button className="btn" onClick={() => copyOtp(order.otp)}>Copy OTP</button>
+                </div>
+              )}
               <SmartMap
                 height={260}
                 route
@@ -99,7 +156,7 @@ export default function OrderTracking() {
               <div className="timeline">
                 {(order.statusTimeline || []).filter((step) => step.status !== "seed").map((step) => (
                   <div className="timeline-step" key={`${order._id}-${step.status}-${step.at}`}>
-                    <span><b>{step.status}</b> {step.label}</span>
+                    <span><StatusBadge value={step.status} /> {step.label}</span>
                     <span className="muted">{step.at ? new Date(step.at).toLocaleTimeString() : ""}</span>
                   </div>
                 ))}
@@ -108,12 +165,6 @@ export default function OrderTracking() {
               {["pending", "accepted"].includes(order.status) && (
                 <button className="btn danger" onClick={() => cancel(order)} style={{ marginLeft: 8 }}>Cancel Order</button>
               )}
-              {["assigned", "picked"].includes(order.status) && (
-                <div className="otp-row">
-                  <span className="badge">Delivery OTP: {order.otp}</span>
-                  <span className="muted">Share this code with your assigned rider at delivery.</span>
-                </div>
-              )}
               <div className="summary-row"><span>Payment method</span><b>{String(order.paymentMethod || "cod").toUpperCase()}</b></div>
               <div className="summary-row"><span>Refund status</span><b>{order.refundStatus || "none"}</b></div>
               {order.status === "delivered" && ["none", undefined].includes(order.refundStatus) && (
@@ -121,7 +172,7 @@ export default function OrderTracking() {
               )}
             </div>
           ))}
-          {orders.length === 0 && <div className="empty-state"><h3>No orders yet</h3><p>Your active and past orders will appear here.</p></div>}
+          {orders.length === 0 && <div className="empty-state"><h3>No orders yet</h3><p>Your orders will appear here after checkout.</p></div>}
         </div>
       </div>
     </section>

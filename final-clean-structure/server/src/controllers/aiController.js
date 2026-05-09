@@ -1,11 +1,22 @@
+const mongoose = require("mongoose");
 const FoodItem = require("../models/FoodItem");
 const { successResponse } = require("../utils/apiResponse");
 const { getRecommendations } = require("../services/recommendationService");
 const { calculateFreshnessScore } = require("../services/freshnessScoreService");
 const { calculateKitchenLoad } = require("../services/kitchenLoadService");
 const { getDeliveryCostBreakdown } = require("../services/deliveryCostService");
+const { fallbackMenu } = require("../data/narowalFallbackData");
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
+
+const fallbackFoodItems = () =>
+  Object.values(fallbackMenu)
+    .flat()
+    .map((item) => ({
+      ...item,
+      id: item._id,
+      taste_score: item.tasteScore || 90,
+    }));
 
 const callAIService = async (path, payload) => {
   const controller = new AbortController();
@@ -27,11 +38,11 @@ const callAIService = async (path, payload) => {
 };
 
 exports.recommendFood = async (req, res) => {
-  const foodItems = await FoodItem.find();
+  const foodItems = mongoose.connection.readyState === 1 ? await FoodItem.find() : fallbackFoodItems();
 
   try {
     const aiResponse = await callAIService("/recommendations", {
-      user_goal: req.user.healthProfile?.dietType || "",
+      user_goal: req.user?.healthProfile?.dietType || "",
       past_orders: [],
       food_items: foodItems.map((item) => ({
         id: String(item._id),
@@ -46,7 +57,9 @@ exports.recommendFood = async (req, res) => {
 
     return successResponse(res, "AI recommendations fetched from AI service", aiResponse.data);
   } catch {
-    const recommendations = await getRecommendations({ user: req.user, foodItems });
+    const recommendations = mongoose.connection.readyState === 1
+      ? await getRecommendations({ user: req.user, foodItems })
+      : foodItems.slice(0, 10);
     return successResponse(res, "AI recommendations fetched", recommendations);
   }
 };
@@ -156,7 +169,7 @@ exports.refundDecision = async (req, res) => {
 };
 
 exports.goalFilter = async (req, res) => {
-  const foodItems = await FoodItem.find();
+  const foodItems = mongoose.connection.readyState === 1 ? await FoodItem.find() : fallbackFoodItems();
   const mappedItems = foodItems.map((item) => ({
     id: String(item._id),
     name: item.name,

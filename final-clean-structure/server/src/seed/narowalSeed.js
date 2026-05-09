@@ -651,8 +651,45 @@ const seed = async () => {
   });
   await Restaurant.findByIdAndUpdate(restaurantsByName["ZFC Narowal"]._id, { $inc: { supportTicketCount: 1 } });
 
+  const notifications = await Notification.create([
+    {
+      user: usersByEmail["admin@smartfood.test"]._id,
+      type: "system",
+      title: "Narowal demo data ready",
+      message: "SmartFood Narowal demo restaurants, riders, orders, and support data have been seeded.",
+    },
+    {
+      user: usersByEmail["customer@smartfood.test"]._id,
+      type: "order",
+      title: "Palmer order is preparing",
+      message: "Your Palmer Restaurant demo order is being prepared for UET Narowal delivery.",
+      restaurant: restaurantsByName["Palmer Restaurant"]._id,
+    },
+    {
+      user: usersByEmail["rider@smartfood.test"]._id,
+      type: "payment",
+      title: "COD earnings updated",
+      message: "Your delivered Anbala demo order earnings were added to your rider wallet.",
+      rider: riderAli._id,
+    },
+    {
+      user: ownersByRestaurant["ZFC Narowal"]._id,
+      type: "support",
+      title: "Support ticket opened",
+      message: "Your pickup visibility support ticket is open for SmartFood admin review.",
+      restaurant: restaurantsByName["ZFC Narowal"]._id,
+    },
+    {
+      user: ownersByRestaurant["Palmer Restaurant"]._id,
+      type: "approval",
+      title: "Restaurant approved",
+      message: "Palmer Restaurant is approved and visible in the Narowal customer app.",
+      restaurant: restaurantsByName["Palmer Restaurant"]._id,
+    },
+  ]);
+
   console.log(
-    `Narowal clean seed completed: reset target collections and inserted ${restaurantCount} restaurant owners, ${restaurantCount} restaurants, ${itemCount} menu items, ${demoUsers.length} platform users, 2 riders, ${orderCount} orders, and ${complaintCount} complaints.`
+    `Narowal clean seed completed: reset target collections and inserted ${restaurantCount} restaurant owners, ${restaurantCount} restaurants, ${itemCount} menu items, ${demoUsers.length} platform users, 2 riders, ${orderCount} orders, ${complaintCount} complaints, and ${notifications.length} notifications.`
   );
   console.log("Demo login credentials:");
   console.log("Admin: admin@smartfood.test / password123");

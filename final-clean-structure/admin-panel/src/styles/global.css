@@ -534,3 +534,125 @@ textarea:focus {
     top: 84px;
   }
 }
+
+/* Operator readability utilities */
+.badge {
+  align-items: center;
+  line-height: 1;
+  max-width: 100%;
+  text-transform: capitalize;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.badge.info {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  table-layout: auto;
+}
+
+.table th,
+.table td {
+  min-width: 118px;
+}
+
+.table th:last-child,
+.table td:last-child {
+  min-width: 260px;
+}
+
+.cell-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cell-title {
+  font-weight: 900;
+}
+
+.cell-sub {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.responsive-cards {
+  display: none;
+}
+
+.empty-state {
+  background: linear-gradient(180deg, #fff, #fff8f3);
+  border: 1px dashed #f3c8b6;
+  border-radius: 18px;
+  color: var(--muted);
+  padding: 24px;
+  text-align: center;
+}
+
+.data-card {
+  display: grid;
+  gap: 12px;
+}
+
+.data-card-row {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 5px;
+  padding-top: 10px;
+}
+
+.data-card-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.nav-links a,
+.nav-links button,
+.role-badge {
+  align-items: center;
+  display: inline-flex;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.nav-icon {
+  height: 16px;
+  width: 16px;
+}
+
+.action-row {
+  align-items: center;
+  background: #fffaf7;
+  border: 1px solid #f3d7ca;
+  border-radius: 16px;
+  padding: 6px;
+}
+
+.action-row .btn,
+.action-row select,
+.action-row input {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .table-wrap {
+    display: none;
+  }
+
+  .responsive-cards {
+    display: grid;
+    gap: 14px;
+  }
+}

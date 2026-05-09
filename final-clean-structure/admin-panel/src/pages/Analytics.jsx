@@ -3,6 +3,7 @@ import StatCard from "../components/admin/StatCard.jsx";
 import AdminMap from "../components/admin/AdminMap.jsx";
 import { calculatePlatformStats } from "../features/platformAnalytics/analytics.js";
 import { getAdminOrders, getAdminRestaurants, getAdminRiders, getAdminUsers, getFinanceSummary } from "../services/adminService.js";
+import socket from "../services/socket.js";
 
 export default function Analytics() {
   const [users, setUsers] = useState([]);
@@ -11,7 +12,7 @@ export default function Analytics() {
   const [riders, setRiders] = useState([]);
   const [finance, setFinance] = useState(null);
 
-  useEffect(() => {
+  const loadAnalytics = () => {
     Promise.all([getAdminUsers(), getAdminOrders(), getAdminRestaurants(), getAdminRiders()])
       .then(([usersRes, ordersRes, restaurantsRes, ridersRes]) => {
         setUsers(usersRes.data.data || []);
@@ -21,6 +22,21 @@ export default function Analytics() {
       })
       .catch(() => {});
     getFinanceSummary().then((res) => setFinance(res.data.data?.totals || null)).catch(() => {});
+  };
+
+  useEffect(() => {
+    loadAnalytics();
+    socket.emit("join-role-rooms");
+    socket.on("admin:order-lifecycle", loadAnalytics);
+    socket.on("admin:rider-updated", loadAnalytics);
+    socket.on("admin:restaurant-updated", loadAnalytics);
+    socket.on("admin:refund-updated", loadAnalytics);
+    return () => {
+      socket.off("admin:order-lifecycle", loadAnalytics);
+      socket.off("admin:rider-updated", loadAnalytics);
+      socket.off("admin:restaurant-updated", loadAnalytics);
+      socket.off("admin:refund-updated", loadAnalytics);
+    };
   }, []);
 
   const revenue = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);

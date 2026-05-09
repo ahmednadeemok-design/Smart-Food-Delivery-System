@@ -1,10 +1,13 @@
+const mongoose = require("mongoose");
 const Restaurant = require("../models/Restaurant");
 const FoodItem = require("../models/FoodItem");
 const Order = require("../models/Order");
 const Campaign = require("../models/Campaign");
 const SupportTicket = require("../models/SupportTicket");
+const { emitAdminRealtime, emitRestaurantRealtime } = require("../services/realtimeService");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { NAROWAL_AREAS, NAROWAL_CENTER, clampLocation, resolveNarowalArea } = require("../constants/narowal");
+const { fallbackMenu, fallbackRestaurants, getFallbackRestaurants } = require("../data/narowalFallbackData");
 
 const restaurantPopulate = [
   { path: "customer", select: "name email phone" },
@@ -217,6 +220,7 @@ exports.updateRestaurant = async (req, res) => {
     if (localArea && !NAROWAL_AREAS.includes(localArea)) return errorResponse(res, "Restaurant must stay inside Narowal coverage", 400);
     Object.assign(restaurant, restaurantPayload(req.body));
     await restaurant.save();
+    emitRestaurantRealtime(req, "restaurant:state-updated", restaurant);
     return successResponse(res, "Restaurant updated successfully", restaurant);
   } catch (error) {
     return errorResponse(res, error.message, 500);
@@ -224,6 +228,9 @@ exports.updateRestaurant = async (req, res) => {
 };
 
 exports.getRestaurants = async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return successResponse(res, "Restaurants loaded from Narowal offline fallback while MongoDB reconnects", getFallbackRestaurants(req.query));
+  }
   const query = req.user?.role === "admin" ? {} : { isActive: { $ne: false }, isOpen: { $ne: false }, $or: [{ approvalStatus: "approved" }, { approvalStatus: { $exists: false } }] };
   if (req.query.area && !NAROWAL_AREAS.includes(req.query.area)) return errorResponse(res, "Unsupported Narowal area", 400);
   if (req.query.area) query.localArea = req.query.area;
@@ -243,6 +250,11 @@ exports.getRestaurants = async (req, res) => {
 };
 
 exports.getRestaurantById = async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    const restaurant = fallbackRestaurants.find((item) => String(item._id) === String(req.params.id));
+    if (!restaurant) return errorResponse(res, "Restaurant not found while MongoDB reconnects", 404);
+    return successResponse(res, "Restaurant loaded from Narowal offline fallback while MongoDB reconnects", restaurant);
+  }
   const restaurant = await Restaurant.findById(req.params.id);
   if (!restaurant) return errorResponse(res, "Restaurant not found", 404);
   return successResponse(res, "Restaurant fetched successfully", restaurant);
@@ -271,6 +283,10 @@ exports.addMyFoodItem = async (req, res) => {
 };
 
 exports.getFoodItems = async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    const restaurantId = req.params.restaurantId || req.params.id;
+    return successResponse(res, "Menu loaded from Narowal offline fallback while MongoDB reconnects", fallbackMenu[restaurantId] || []);
+  }
   const query = { restaurant: req.params.restaurantId || req.params.id };
   if (req.user?.role !== "admin" && req.user?.role !== "restaurant") {
     query.isAvailable = { $ne: false };
@@ -293,6 +309,7 @@ exports.updateMyFoodItemAvailability = async (req, res) => {
   if (req.body.isAvailable !== undefined) item.isAvailable = Boolean(req.body.isAvailable);
   if (req.body.isOutOfStock !== undefined) item.isOutOfStock = Boolean(req.body.isOutOfStock);
   await item.save();
+  emitRestaurantRealtime(req, "restaurant:menu-updated", restaurant, { item });
   return successResponse(res, "Menu availability updated", item);
 };
 
@@ -386,6 +403,8 @@ exports.createMySupportTicket = async (req, res) => {
   });
   restaurant.supportTicketCount = Number(restaurant.supportTicketCount || 0) + 1;
   await restaurant.save();
+  emitRestaurantRealtime(req, "restaurant:support-notification", restaurant, { ticket });
+  emitAdminRealtime(req, "admin:support-ticket-updated", { ticket });
   return successResponse(res, "Support ticket created", ticket, 201);
 };
 

@@ -12,6 +12,7 @@ const SupportTicket = require("../models/SupportTicket");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { settleCodDelivery } = require("../services/financeService");
 const { sendRestaurantApproval, sendRiderApproval, sendTemporaryPassword, sendOrderUpdate } = require("../utils/emailService");
+const { emitAdminRealtime, emitOrderRealtime, emitRestaurantRealtime, emitRiderRealtime } = require("../services/realtimeService");
 
 const clampScore = (score) => Math.max(0, Math.min(100, Number(score)));
 const allowedRoles = ["customer", "rider", "restaurant", "admin"];
@@ -99,6 +100,7 @@ exports.updateRestaurant = async (req, res) => {
   if (!restaurant) return errorResponse(res, "Restaurant not found", 404);
   if (updates.approvalStatus === "approved") await sendRestaurantApproval(restaurant);
   await logAction(req, "restaurant.update", "restaurant", restaurant._id, req.body.reason, updates);
+  emitRestaurantRealtime(req, "restaurant:state-updated", restaurant);
   return successResponse(res, "Restaurant updated", restaurant);
 };
 
@@ -167,6 +169,8 @@ exports.updateRestaurantSupportTicket = async (req, res) => {
     .populate("owner", "name email phone");
   if (!ticket) return errorResponse(res, "Support ticket not found", 404);
   await logAction(req, "restaurant.support.update", "support_ticket", ticket._id, req.body.adminNote || "Support ticket updated");
+  emitAdminRealtime(req, "admin:support-ticket-updated", { ticket });
+  if (ticket.restaurant) emitRestaurantRealtime(req, "restaurant:support-notification", ticket.restaurant, { ticket });
   return successResponse(res, "Support ticket updated", ticket);
 };
 
@@ -209,6 +213,7 @@ exports.updateRider = async (req, res) => {
   if (!rider) return errorResponse(res, "Rider not found", 404);
   if (updates.approvalStatus === "approved") await sendRiderApproval(rider);
   await logAction(req, "rider.update", "rider", rider._id, req.body.reason, updates);
+  emitRiderRealtime(req, "rider:profile-updated", rider);
   return successResponse(res, "Rider updated", rider);
 };
 
@@ -258,6 +263,13 @@ exports.updateOrder = async (req, res) => {
     await order.save();
   }
   await logAction(req, "order.update", "order", order._id, req.body.reason, updates);
+  const realtimeOrder = await Order.findById(order._id)
+    .populate("customer", "name email phone")
+    .populate("restaurant")
+    .populate({ path: "rider", populate: { path: "user", select: "name email phone" } });
+  emitOrderRealtime(req, "order-status-updated", realtimeOrder);
+  if (updates.rider) emitOrderRealtime(req, "rider:order-assigned", realtimeOrder);
+  if (updates.status === "ready") emitOrderRealtime(req, "rider:new-ready-order", realtimeOrder);
   if (updates.status) {
     const populated = await Order.findById(order._id).populate("customer", "name email").populate("restaurant", "name");
     await sendOrderUpdate(populated, `Order ${updates.status}`, `Your SmartFood Narowal order is now ${updates.status}.`);
@@ -283,6 +295,7 @@ exports.updateComplaint = async (req, res) => {
   }
 
   await logAction(req, "complaint.update", "complaint", complaint._id, req.body.reason, req.body);
+  emitAdminRealtime(req, "admin:complaint-updated", { complaint });
   return successResponse(res, "Complaint updated", complaint);
 };
 
@@ -324,6 +337,8 @@ exports.refundPayment = async (req, res) => {
   }
   await payment.save();
   await logAction(req, req.body.approved ? "payment.refund.approve" : "payment.refund.reject", "payment", payment._id, req.body.reason);
+  emitAdminRealtime(req, "admin:refund-updated", { payment, order });
+  if (order) emitOrderRealtime(req, "payment:refund-updated", order, { payment });
   return successResponse(res, "Refund decision saved", payment);
 };
 

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import DataTable from "../components/admin/DataTable.jsx";
 import { getAdminRiders, updateAdminRider } from "../services/adminService.js";
 import { toast } from "../utils/toast.js";
+import StatusBadge from "../components/common/StatusBadge.jsx";
+import socket from "../services/socket.js";
 
 export default function ManageRiders() {
   const [riders, setRiders] = useState([]);
@@ -37,7 +39,19 @@ export default function ManageRiders() {
     }).catch((err) => toast.error(err.message));
   };
 
-  useEffect(() => loadRiders(), []);
+  useEffect(() => {
+    loadRiders();
+    const reload = () => loadRiders();
+    socket.emit("join-role-rooms");
+    socket.on("admin:rider-updated", reload);
+    socket.on("admin:rider-online-state", reload);
+    socket.on("admin:rider-location-updated", reload);
+    return () => {
+      socket.off("admin:rider-updated", reload);
+      socket.off("admin:rider-online-state", reload);
+      socket.off("admin:rider-location-updated", reload);
+    };
+  }, []);
 
   const updateRider = async (id, payload) => {
     try {
@@ -50,14 +64,14 @@ export default function ManageRiders() {
   };
 
   const columns = [
-    { key: "name", label: "Rider" },
-    { key: "email", label: "Email" },
+    { key: "name", label: "Rider", render: (row) => <div className="cell-main"><span className="cell-title">{row.name}</span><span className="cell-sub">{row.email}</span></div> },
+    { key: "email", label: "Email", render: (row) => <span className="cell-sub">{row.email}</span> },
     { key: "phone", label: "Phone" },
     { key: "bikeNumber", label: "Vehicle" },
     { key: "preferredArea", label: "Area" },
     { key: "paymentAccountType", label: "Payout", render: (row) => `${row.paymentAccountType || "-"} ${row.accountTitle ? `(${row.accountTitle})` : ""}` },
-    { key: "approvalStatus", label: "Approval", render: (row) => <span className={`badge ${row.approvalStatus === "approved" ? "success" : row.approvalStatus === "rejected" ? "danger" : "warning"}`}>{row.approvalStatus}</span> },
-    { key: "availabilityStatus", label: "Status", render: (row) => <span className={`badge ${row.isOnline ? "success" : "warning"}`}>{row.availabilityStatus}</span> },
+    { key: "approvalStatus", label: "Approval", render: (row) => <StatusBadge value={row.approvalStatus} /> },
+    { key: "availabilityStatus", label: "Status", render: (row) => <StatusBadge value={row.availabilityStatus} /> },
     { key: "activeOrders", label: "Active Orders" },
     { key: "activeOrder", label: "Active Job" },
     { key: "earnings", label: "Earnings", render: (row) => `Rs. ${Number(row.earnings || 0).toLocaleString("en-PK")}` },

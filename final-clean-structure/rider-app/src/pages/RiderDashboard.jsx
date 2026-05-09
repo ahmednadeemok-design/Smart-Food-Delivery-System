@@ -7,6 +7,8 @@ import { getActiveOrder, getMyRiderProfile, getRiderEarnings, updateRiderAvailab
 import { useAuth } from "../store/AuthContext.jsx";
 import { getRiderTrustStatus } from "../features/riderTrustScore/trustScoreRules.js";
 import { toast } from "../utils/toast.js";
+import StatusBadge from "../components/common/StatusBadge.jsx";
+import socket from "../services/socket.js";
 
 export default function RiderDashboard() {
   const { user } = useAuth();
@@ -36,8 +38,20 @@ export default function RiderDashboard() {
 
   useEffect(() => {
     loadDashboard();
+    const reload = () => loadDashboard();
+    socket.emit("join-role-rooms");
+    socket.on("rider:availability-updated", reload);
+    socket.on("rider:profile-updated", reload);
+    socket.on("rider:order-assigned", reload);
+    socket.on("order-status-updated", reload);
     const interval = setInterval(loadDashboard, 15000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      socket.off("rider:availability-updated", reload);
+      socket.off("rider:profile-updated", reload);
+      socket.off("rider:order-assigned", reload);
+      socket.off("order-status-updated", reload);
+    };
   }, []);
 
   useEffect(() => {
@@ -78,11 +92,15 @@ export default function RiderDashboard() {
   return (
     <section className="page">
       <div className="container">
-        <div className="card" style={{ marginBottom: 18 }}>
-          <span className="badge">{profile?.availabilityStatus || (online ? "online" : "offline")}</span>
-          <h1>Welcome, {user?.name || "Rider"}</h1>
-          <p className="muted">Manage active deliveries, workload, optimized route, and OTP verification.</p>
-          <button className="btn" onClick={() => setAvailability(!online)}>{online ? "Go Offline" : "Go Online"}</button>
+        <div className="card rider-hero" style={{ marginBottom: 18 }}>
+          <div>
+            <StatusBadge value={profile?.availabilityStatus || (online ? "online" : "offline")} />
+            <h1>Welcome, {user?.name || "Rider"}</h1>
+            <p className="muted">Go online to receive orders, then use Active Delivery for pickup and OTP completion.</p>
+          </div>
+          <button className={`btn rider-primary-action ${online ? "outline" : "success"}`} onClick={() => setAvailability(!online)}>
+            {online ? "Go Offline" : "Go Online"}
+          </button>
           {profile?.approvalStatus !== "approved" && <p className="muted">Your rider profile is pending admin approval.</p>}
         </div>
         {needsProfile && (

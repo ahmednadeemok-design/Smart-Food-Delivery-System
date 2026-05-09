@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middlewares/authMiddleware");
+const { optionalProtect } = require("../middlewares/authMiddleware");
 const {
   recommendFood,
   freshnessScore,
@@ -14,7 +14,7 @@ const {
   calorieSummary,
 } = require("../controllers/aiController");
 
-router.get("/recommendations", protect, recommendFood);
+router.get("/recommendations", optionalProtect, recommendFood);
 router.post("/freshness-score", freshnessScore);
 router.post("/kitchen-load", kitchenLoad);
 router.post("/delivery-cost", deliveryCost);

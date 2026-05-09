@@ -6,6 +6,7 @@ import { getRestaurantDashboard, updateRestaurantOpenStatus } from "../services/
 import { calculateKitchenLoad } from "../services/aiService.js";
 import { toast } from "../utils/toast.js";
 import formatCurrency from "../utils/formatCurrency.js";
+import socket from "../services/socket.js";
 
 export default function RestaurantDashboard() {
   const { user } = useAuth();
@@ -26,8 +27,20 @@ export default function RestaurantDashboard() {
       }
     };
     loadDashboard();
+    const reload = () => loadDashboard();
+    socket.emit("join-role-rooms");
+    socket.on("restaurant:new-order", reload);
+    socket.on("order-status-updated", reload);
+    socket.on("restaurant:state-updated", reload);
+    socket.on("restaurant:support-notification", reload);
     const interval = setInterval(loadDashboard, 15000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      socket.off("restaurant:new-order", reload);
+      socket.off("order-status-updated", reload);
+      socket.off("restaurant:state-updated", reload);
+      socket.off("restaurant:support-notification", reload);
+    };
   }, []);
 
   const stats = dashboard?.stats || {};

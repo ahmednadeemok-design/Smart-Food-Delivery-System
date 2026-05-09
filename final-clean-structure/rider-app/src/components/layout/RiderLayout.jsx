@@ -1,14 +1,25 @@
+import { useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { ClipboardList, History, LayoutDashboard, LogIn, LogOut, PackageCheck, Route, ShieldCheck, UserPlus } from "lucide-react";
 import { useAuth } from "../../store/AuthContext.jsx";
+import socket, { connectSocket, disconnectSocket } from "../../services/socket.js";
 
 export default function RiderLayout() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { token, user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    disconnectSocket();
     logout();
     navigate("/login");
   };
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return undefined;
+    connectSocket(token);
+    socket.on("connect", () => socket.emit("join-role-rooms"));
+    return () => socket.off("connect");
+  }, [isAuthenticated, token]);
 
   return (
     <>
@@ -21,19 +32,19 @@ export default function RiderLayout() {
           <nav className="nav-links">
             {isAuthenticated ? (
               <>
-                <NavLink to="/dashboard">Dashboard</NavLink>
-                <NavLink to="/available-orders">Orders</NavLink>
-                <NavLink to="/active-delivery">Active</NavLink>
-                <NavLink to="/history">History</NavLink>
-                <NavLink to="/multi-order-route">Route</NavLink>
-                <NavLink to="/delivery-verification">OTP</NavLink>
-                <span className="badge"><span className="status-dot" />{user?.role || "rider"}</span>
-                <button className="btn outline" onClick={handleLogout}>Logout</button>
+                <NavLink to="/dashboard"><LayoutDashboard className="nav-icon" />Dashboard</NavLink>
+                <NavLink to="/available-orders"><ClipboardList className="nav-icon" />Orders</NavLink>
+                <NavLink to="/active-delivery"><PackageCheck className="nav-icon" />Active</NavLink>
+                <NavLink to="/history"><History className="nav-icon" />History</NavLink>
+                <NavLink to="/multi-order-route"><Route className="nav-icon" />Route</NavLink>
+                <NavLink to="/delivery-verification"><ShieldCheck className="nav-icon" />OTP</NavLink>
+                <span className="badge role-badge"><span className="status-dot" />{user?.role || "rider"}</span>
+                <button className="btn outline" onClick={handleLogout}><LogOut className="nav-icon" />Logout</button>
               </>
             ) : (
               <>
-                <NavLink to="/login">Login</NavLink>
-                <Link className="btn" to="/register">Register</Link>
+                <NavLink to="/login"><LogIn className="nav-icon" />Login</NavLink>
+                <Link className="btn" to="/register"><UserPlus className="nav-icon" />Register</Link>
               </>
             )}
           </nav>

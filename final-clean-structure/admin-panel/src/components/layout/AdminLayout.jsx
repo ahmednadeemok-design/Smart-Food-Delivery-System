@@ -1,14 +1,25 @@
+import { useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Activity, BarChart3, Bike, ClipboardList, Gauge, LayoutDashboard, LogIn, LogOut, ReceiptText, ShieldCheck, Store, UserCog, UserPlus, Users } from "lucide-react";
 import { useAuth } from "../../store/AuthContext.jsx";
+import socket, { connectSocket, disconnectSocket } from "../../services/socket.js";
 
 export default function AdminLayout() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { token, user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    disconnectSocket();
     logout();
     navigate("/login");
   };
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return undefined;
+    connectSocket(token);
+    socket.on("connect", () => socket.emit("join-role-rooms"));
+    return () => socket.off("connect");
+  }, [isAuthenticated, token]);
 
   return (
     <>
@@ -22,23 +33,23 @@ export default function AdminLayout() {
           <nav className="nav-links">
             {isAuthenticated ? (
               <>
-                <NavLink to="/dashboard">Dashboard</NavLink>
-                <NavLink to="/users">Users</NavLink>
-                <NavLink to="/riders">Riders</NavLink>
-                <NavLink to="/restaurants">Restaurants</NavLink>
-                <NavLink to="/orders">Orders</NavLink>
-                <NavLink to="/complaints">Complaints</NavLink>
-                <NavLink to="/refunds">Refunds</NavLink>
-                <NavLink to="/trust-scores">Trust</NavLink>
-                <NavLink to="/analytics">Analytics</NavLink>
-                <NavLink to="/system-health">Health</NavLink>
-                <span className="badge">{user?.role || "admin"}</span>
-                <button className="btn outline" onClick={handleLogout}>Logout</button>
+                <NavLink to="/dashboard"><LayoutDashboard className="nav-icon" />Dashboard</NavLink>
+                <NavLink to="/users"><Users className="nav-icon" />Users</NavLink>
+                <NavLink to="/riders"><Bike className="nav-icon" />Riders</NavLink>
+                <NavLink to="/restaurants"><Store className="nav-icon" />Restaurants</NavLink>
+                <NavLink to="/orders"><ReceiptText className="nav-icon" />Orders</NavLink>
+                <NavLink to="/complaints"><ClipboardList className="nav-icon" />Complaints</NavLink>
+                <NavLink to="/refunds"><UserCog className="nav-icon" />Refunds</NavLink>
+                <NavLink to="/trust-scores"><ShieldCheck className="nav-icon" />Trust</NavLink>
+                <NavLink to="/analytics"><BarChart3 className="nav-icon" />Analytics</NavLink>
+                <NavLink to="/system-health"><Activity className="nav-icon" />Health</NavLink>
+                <span className="badge role-badge"><Gauge className="nav-icon" />{user?.role || "admin"}</span>
+                <button className="btn outline" onClick={handleLogout}><LogOut className="nav-icon" />Logout</button>
               </>
             ) : (
               <>
-                <NavLink to="/login">Login</NavLink>
-                <Link className="btn" to="/register">Register</Link>
+                <NavLink to="/login"><LogIn className="nav-icon" />Login</NavLink>
+                <Link className="btn" to="/register"><UserPlus className="nav-icon" />Register</Link>
               </>
             )}
           </nav>
