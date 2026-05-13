@@ -23,6 +23,9 @@ export const updateAdminRider = (id, payload) => api.patch(`/admin/riders/${id}`
 
 export const getAdminOrders = (params = {}) => api.get("/admin/orders", { params });
 export const updateAdminOrder = (id, payload) => api.patch(`/admin/orders/${id}`, payload);
+export const trashAdminOrder = (id, payload = {}) => api.patch(`/admin/orders/${id}/trash`, payload);
+export const restoreAdminOrder = (id, payload = {}) => api.patch(`/admin/orders/${id}/restore`, payload);
+export const permanentlyDeleteAdminOrder = (id, payload = {}) => api.delete(`/admin/orders/${id}/permanent`, { data: payload });
 
 export const getAdminComplaints = () => api.get("/admin/complaints");
 export const updateAdminComplaint = (id, payload) => api.patch(`/admin/complaints/${id}`, payload);

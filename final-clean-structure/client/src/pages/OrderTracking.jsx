@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { cancelOrder, getMyOrders, requestRefund } from "../services/orderService.js";
+import { cancelOrder, getMyOrders, hideMyOrder, requestRefund } from "../services/orderService.js";
 import socket from "../services/socket.js";
 import formatCurrency from "../utils/formatCurrency.js";
 import { toast } from "../utils/toast.js";
@@ -29,11 +29,15 @@ export default function OrderTracking() {
   const [orders, setOrders] = useState([]);
   const [view, setView] = useState("active");
   const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+  const [hideOrderConfirm, setHideOrderConfirm] = useState(null);
 
   const loadOrders = () => {
-    getMyOrders({ view, q: query, page, limit: 10 }).then((res) => {
+    getMyOrders({ view, q: query, status, from, to, page, limit: 10 }).then((res) => {
       const payload = res.data.data || {};
       setOrders(payload.orders || (Array.isArray(payload) ? payload : []));
       setPagination(payload.pagination || { page: 1, pages: 1, total: 0 });
@@ -61,16 +65,7 @@ export default function OrderTracking() {
       socket.off("customer:rider-nearby", reload);
       socket.off("payment:refund-updated", reload);
     };
-  }, [view, page]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(1);
-      loadOrders();
-    }, 350);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [view, page, query, status, from, to]);
 
   const reorder = (order) => {
     order.items?.forEach((item) => {
@@ -84,6 +79,18 @@ export default function OrderTracking() {
       });
     });
     toast.success("Order items added to cart");
+  };
+
+  const hideFromHistory = async () => {
+    if (!hideOrderConfirm) return;
+    try {
+      await hideMyOrder(hideOrderConfirm._id);
+      toast.success("Order hidden from your history");
+      setHideOrderConfirm(null);
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
   const cancel = async (order) => {
@@ -130,10 +137,22 @@ export default function OrderTracking() {
         </div>
         <div className="card form" style={{ marginBottom: 18 }}>
           <div className="action-row">
-            <button className={`btn ${view === "active" ? "" : "outline"}`} onClick={() => { setView("active"); setPage(1); }}>Active Orders</button>
-            <button className={`btn ${view === "history" ? "" : "outline"}`} onClick={() => { setView("history"); setPage(1); }}>Order History</button>
+            <button className={`btn ${view === "active" ? "" : "outline"}`} onClick={() => { setView("active"); setStatus(""); setPage(1); }}>Active Orders</button>
+            <button className={`btn ${view === "history" ? "" : "outline"}`} onClick={() => { setView("history"); setStatus(""); setPage(1); }}>Order History</button>
           </div>
-          <input className="input" placeholder="Search by delivery address or payment status" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input className="input" placeholder="Search by order ID, restaurant, delivery address, or payment status" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} />
+          {view === "history" && (
+            <>
+              <div className="action-row">
+                <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+                  <option value="">All statuses</option>
+                  {["delivered", "cancelled", "rejected"].map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+                <input className="input" type="date" aria-label="From date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} />
+                <input className="input" type="date" aria-label="To date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} />
+              </div>
+            </>
+          )}
           <p className="muted">{view === "active" ? "Only live orders are shown here." : "Recent delivered, cancelled, and rejected orders appear here first."} {pagination.total || 0} found.</p>
         </div>
         <div className="grid">
@@ -195,6 +214,14 @@ export default function OrderTracking() {
               {order.status === "delivered" && ["none", undefined].includes(order.refundStatus) && (
                 <button className="btn outline" onClick={() => refund(order)} style={{ marginLeft: 8 }}>Request Refund</button>
               )}
+              {view === "history" && (
+                <details className="more-actions">
+                  <summary aria-label="More actions">⋮ More Actions</summary>
+                  <div className="more-actions-menu">
+                    <button className="danger-text" onClick={() => setHideOrderConfirm(order)}>Hide from History</button>
+                  </div>
+                </details>
+              )}
             </div>
           ))}
           {orders.length === 0 && <div className="empty-state"><h3>{view === "active" ? "No active orders" : "No order history yet"}</h3><p>{view === "active" ? "Your live orders will appear here after checkout." : "Delivered and cancelled orders will appear here."}</p></div>}
@@ -203,6 +230,18 @@ export default function OrderTracking() {
           <button className="btn outline" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
           <button className="btn outline" disabled={page >= (pagination.pages || 1)} onClick={() => setPage((current) => current + 1)}>Next</button>
         </div>
+        {hideOrderConfirm && (
+          <div className="modal-backdrop" role="dialog" aria-modal="true">
+            <div className="modal-card">
+              <h3>Are you sure?</h3>
+              <p className="muted">Hide order #{hideOrderConfirm._id.slice(-6)} from your order history.</p>
+              <div className="action-row">
+                <button className="btn outline" onClick={() => setHideOrderConfirm(null)}>Cancel</button>
+                <button className="btn danger" onClick={hideFromHistory}>Confirm</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

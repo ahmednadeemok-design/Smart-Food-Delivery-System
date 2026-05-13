@@ -32,7 +32,7 @@ const sanitizeRiderPayload = (body = {}) => ({
   isActive: true,
 });
 
-const activeStatuses = ["assigned", "picked"];
+const activeStatuses = ["assigned", "picked", "on-the-way"];
 
 const populateRider = (query) =>
   query
@@ -173,7 +173,7 @@ exports.getRiderHistory = async (req, res) => {
   if (!rider) return successResponse(res, "No rider profile found", []);
   await applyArchiveWindow(Order, { rider: rider._id });
   const { page, limit, skip } = paginationFromQuery(req.query);
-  const query = { rider: rider._id, status: { $in: TERMINAL_ORDER_STATUSES } };
+  const query = { rider: rider._id, status: { $in: TERMINAL_ORDER_STATUSES }, isDeleted: { $ne: true } };
   const [orders, total] = await Promise.all([
     Order.find(query)
       .populate("customer", "name phone")

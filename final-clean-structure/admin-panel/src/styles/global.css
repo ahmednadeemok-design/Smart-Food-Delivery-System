@@ -646,6 +646,79 @@ textarea:focus {
   white-space: nowrap;
 }
 
+.more-actions {
+  position: relative;
+}
+
+.more-actions summary {
+  border: 1px solid #f3d7ca;
+  border-radius: 999px;
+  color: var(--primary-dark);
+  cursor: pointer;
+  font-weight: 900;
+  list-style: none;
+  padding: 9px 12px;
+  white-space: nowrap;
+}
+
+.more-actions summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-actions-menu {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  display: grid;
+  min-width: 180px;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+}
+
+.more-actions-menu button {
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 850;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.more-actions-menu button:hover {
+  background: #fff4ed;
+}
+
+.more-actions-menu .danger-text {
+  color: var(--danger);
+}
+
+.modal-backdrop {
+  align-items: center;
+  background: rgba(24, 24, 27, .42);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 1001;
+}
+
+.modal-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-md);
+  max-width: 420px;
+  padding: 22px;
+  width: 100%;
+}
+
 @media (max-width: 768px) {
   .table-wrap {
     display: none;
@@ -656,3 +729,6 @@ textarea:focus {
     gap: 14px;
   }
 }
+
+/* Deployable operations polish */
+.table-wrap{border-radius:14px;max-width:100%;overflow-x:auto}.table{min-width:980px}.table th,.table td{overflow-wrap:normal;white-space:nowrap}.table td{max-width:280px}.table .cell-main,.table .cell-sub{white-space:normal}.table .badge,.data-card .badge{flex:0 0 auto;white-space:nowrap}.table .action-row{min-width:280px}.table .action-row select{min-width:150px}.data-card-row>span:last-child{min-width:0;overflow-wrap:anywhere}.grid>.card{align-self:stretch}.card.form{background:linear-gradient(180deg,#fff,#fffaf7)}@media(max-width:520px){.data-card .action-row{align-items:stretch;display:grid}.data-card .action-row .btn,.data-card .action-row select{width:100%}}

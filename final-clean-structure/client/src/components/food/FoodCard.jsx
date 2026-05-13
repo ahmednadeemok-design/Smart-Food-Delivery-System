@@ -11,6 +11,8 @@ export default function FoodCard({ item, onAdd, variant = "menu" }) {
         <img
           src={item.image || "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=900"}
           alt={item.name}
+          loading="lazy"
+          decoding="async"
         />
         {isRecommended && <span className="food-card-float">AI pick</span>}
       </div>

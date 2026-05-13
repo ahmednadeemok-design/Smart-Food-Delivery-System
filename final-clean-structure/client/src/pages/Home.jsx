@@ -5,7 +5,7 @@ import RestaurantCard from "../components/restaurant/RestaurantCard.jsx";
 import FoodCard from "../components/food/FoodCard.jsx";
 import { filterFoodByGoal, getRecommendations } from "../services/aiService.js";
 import { getRestaurants, getRestaurantItems } from "../services/restaurantService.js";
-import { addToCart } from "../store/cartStore.js";
+import { addToCart, clearCart, getCart, getCartRestaurantId } from "../store/cartStore.js";
 import { toast } from "../utils/toast.js";
 
 const categories = ["Biryani", "Karahi", "Burger", "Pizza", "BBQ", "Bakery", "Tea", "Healthy"];
@@ -18,13 +18,19 @@ export default function Home() {
   const [aiFoods, setAiFoods] = useState([]);
   const [healthFoods, setHealthFoods] = useState([]);
   const [search, setSearch] = useState("");
+  const [pendingFood, setPendingFood] = useState(null);
 
   useEffect(() => {
     getRestaurants().then(async (res) => {
       const list = res.data.data || [];
       setRestaurants(list);
       const menuResponses = await Promise.all(list.slice(0, 4).map((restaurant) => getRestaurantItems(restaurant._id)));
-      const nextFoods = menuResponses.flatMap((menuRes, index) => (menuRes.data.data || []).slice(0, 2).map((item) => ({ ...item, restaurantName: list[index]?.name })));
+      const nextFoods = menuResponses.flatMap((menuRes, index) => (menuRes.data.data || []).slice(0, 2).map((item) => ({
+        ...item,
+        restaurant: item.restaurant || list[index]?._id,
+        restaurantName: list[index]?.name,
+        restaurantDeliveryFee: list[index]?.deliveryFeeBase || 125,
+      })));
       setFoods(nextFoods);
       getRecommendations().then((aiRes) => {
         const recommended = aiRes.data.data || [];
@@ -41,6 +47,26 @@ export default function Home() {
   const submitSearch = (event) => {
     event.preventDefault();
     navigate(`/restaurants${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""}`);
+  };
+
+  const addRecommendedFood = (food) => {
+    const restaurantId = food.restaurant?._id || food.restaurant || food.restaurantId;
+    if (!restaurantId) return toast.error("Open the restaurant menu before adding this item.");
+    const currentRestaurantId = getCartRestaurantId(getCart());
+    if (currentRestaurantId && String(currentRestaurantId) !== String(restaurantId)) {
+      setPendingFood({ ...food, restaurant: restaurantId });
+      return;
+    }
+    addToCart({ ...food, restaurant: restaurantId });
+    toast.success("Added to cart");
+  };
+
+  const clearAndAddPendingFood = () => {
+    if (!pendingFood) return;
+    clearCart();
+    addToCart(pendingFood);
+    setPendingFood(null);
+    toast.success("Started a new order");
   };
 
   return (
@@ -125,10 +151,7 @@ export default function Home() {
           </div>
           <div className="recommended-food-grid">
             {(aiFoods.length ? aiFoods : foods).slice(0, 6).map((item) => (
-              <FoodCard key={item._id} item={item} variant="recommended" onAdd={(food) => {
-                addToCart({ ...food, restaurant: food.restaurant });
-                toast.success("Added to cart");
-              }} />
+              <FoodCard key={item._id} item={item} variant="recommended" onAdd={addRecommendedFood} />
             ))}
           </div>
         </div>
@@ -158,6 +181,18 @@ export default function Home() {
           )}
         </div>
       </section>
+      {pendingFood && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="home-new-order-title">
+          <div className="modal-card">
+            <h3 id="home-new-order-title">Start a new order?</h3>
+            <p className="muted">Your cart already has items from another restaurant. To add {pendingFood.name}, clear your current cart first.</p>
+            <div className="action-row">
+              <button className="btn" type="button" onClick={clearAndAddPendingFood}>Clear cart & add item</button>
+              <button className="btn outline" type="button" onClick={() => setPendingFood(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

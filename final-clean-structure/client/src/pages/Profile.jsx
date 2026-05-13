@@ -101,7 +101,13 @@ export default function Profile() {
             {(user?.savedAddresses || []).map((item) => (
               <div className="mini-row" key={item._id}>
                 <span><b>{item.label}</b><br />{item.address}</span>
-                <button type="button" className="btn danger" onClick={() => deleteSavedAddress(item._id).then(refreshProfile)}>Remove</button>
+                <button
+                  type="button"
+                  className="btn danger"
+                  onClick={() => deleteSavedAddress(item._id).then(refreshProfile).then(() => toast.success("Address removed")).catch((err) => toast.error(err.message))}
+                >
+                  Remove
+                </button>
               </div>
             ))}
             {(user?.savedAddresses || []).length === 0 && <p className="muted">No saved addresses yet.</p>}

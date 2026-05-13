@@ -10,8 +10,7 @@ export default function ManageRiders() {
 
   const loadRiders = () => {
     getAdminRiders().then((res) => {
-      if (res.data.data?.length) {
-        setRiders(res.data.data.map((r) => ({
+      setRiders((res.data.data || []).map((r) => ({
           _id: r._id,
           name: r.user?.name || "Rider",
           email: r.user?.email || "",
@@ -34,8 +33,7 @@ export default function ManageRiders() {
           currentLocation: r.currentLocation ? `${Number(r.currentLocation.lat || 0).toFixed(4)}, ${Number(r.currentLocation.lng || 0).toFixed(4)}` : "-",
           workloadScore: r.workloadScore || 0,
           trustScore: r.trustScore,
-        })));
-      }
+      })));
     }).catch((err) => toast.error(err.message));
   };
 
@@ -63,6 +61,14 @@ export default function ManageRiders() {
     }
   };
 
+  const updateTrust = (row) => {
+    const next = window.prompt("New rider trust score", row.trustScore);
+    if (next === null) return;
+    const trustScore = Number(next);
+    if (!Number.isFinite(trustScore)) return toast.error("Enter a valid trust score number.");
+    return updateRider(row._id, { trustScore, reason: "Admin updated rider trust score" });
+  };
+
   const columns = [
     { key: "name", label: "Rider", render: (row) => <div className="cell-main"><span className="cell-title">{row.name}</span><span className="cell-sub">{row.email}</span></div> },
     { key: "email", label: "Email", render: (row) => <span className="cell-sub">{row.email}</span> },
@@ -88,7 +94,7 @@ export default function ManageRiders() {
           <button className="btn outline" onClick={() => updateRider(row._id, { approvalStatus: "rejected", isActive: false, isOnline: false, reason: "Admin rejected rider" })}>Reject</button>
           <button className="btn outline" onClick={() => updateRider(row._id, { isActive: !row.isActive, isOnline: false, reason: "Admin toggled rider activation" })}>{row.isActive ? "Deactivate" : "Activate"}</button>
           <button className="btn outline" onClick={() => updateRider(row._id, { isSuspended: !row.isSuspended, suspensionReason: row.isSuspended ? "" : "Admin suspension", reason: "Admin toggled rider suspension" })}>{row.isSuspended ? "Unsuspend" : "Suspend"}</button>
-          <button className="btn outline" onClick={() => updateRider(row._id, { trustScore: Number(window.prompt("New rider trust score", row.trustScore) || row.trustScore), reason: "Admin updated rider trust score" })}>Trust</button>
+          <button className="btn outline" onClick={() => updateTrust(row)}>Trust</button>
         </div>
       ),
     },

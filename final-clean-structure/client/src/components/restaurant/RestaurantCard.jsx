@@ -10,20 +10,28 @@ export default function RestaurantCard({ restaurant }) {
     <Link to={`/restaurants/${restaurant._id}`} className="card restaurant-card">
       <div className="media-wrap">
         {restaurant.offerText && <span className="floating-offer">{restaurant.offerText}</span>}
-      <img
-        src={restaurant.image || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=900"}
-        alt={restaurant.name}
-      />
+        <img
+          src={restaurant.image || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=900"}
+          alt={restaurant.name}
+          loading="lazy"
+          decoding="async"
+        />
+        <div className="restaurant-media-meta">
+          <span>{deliveryEstimate} min</span>
+          <span>Rs. {deliveryFee}</span>
+        </div>
       </div>
-      <h3>{restaurant.name}</h3>
-      <p className="muted restaurant-cuisines">{(restaurant.cuisineTypes || []).slice(0, 3).join(" / ") || "Fresh food with smart delivery."}</p>
-      <p className="muted">{restaurant.address || "Narowal city"}</p>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <span className="badge">Rating {restaurant.rating || 0}</span>
+      <div className="restaurant-card-body">
+        <div className="restaurant-card-title">
+          <h3>{restaurant.name}</h3>
+          <span className="rating-chip">★ {restaurant.rating || 0}</span>
+        </div>
+        <p className="muted restaurant-cuisines">{(restaurant.cuisineTypes || []).slice(0, 3).join(" / ") || "Fresh food with smart delivery."}</p>
+        <p className="muted restaurant-address">{restaurant.address || "Narowal city"}</p>
+      </div>
+      <div className="restaurant-card-badges">
         <StatusBadge value={`Kitchen: ${restaurant.kitchenLoad || "low"}`} />
         <StatusBadge value={restaurant.isOpen === false ? "Closed" : "Open"} />
-        <span className="badge">{deliveryEstimate} min</span>
-        <span className="badge">Delivery Rs. {deliveryFee}</span>
         <span className="badge">Min Rs. 350</span>
         <span className="badge">Trust {restaurant.trustScore || 100}</span>
       </div>

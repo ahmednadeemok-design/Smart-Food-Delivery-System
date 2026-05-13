@@ -13,6 +13,7 @@ const {
   TERMINAL_ORDER_STATUSES,
   applyArchiveWindow,
   buildOrderScopeQuery,
+  enrichOrderSearchQuery,
   paginationFromQuery,
 } = require("../services/orderLifecycleService");
 
@@ -122,8 +123,21 @@ exports.getMyRestaurants = async (req, res) => {
 exports.getMyRestaurantOrders = async (req, res) => {
   const ownerQuery = await orderQueryForOwner(req.user._id);
   await applyArchiveWindow(Order, ownerQuery);
-  const view = req.query.view || "active";
-  const scopedQuery = { ...ownerQuery, ...buildOrderScopeQuery({ view, status: req.query.status, search: req.query.q }) };
+  const requestedView = req.query.view || "active";
+  const view = ["active", "history", "archived"].includes(requestedView) ? requestedView : "active";
+  const scope = buildOrderScopeQuery({ view, status: req.query.status, search: req.query.q, from: req.query.from, to: req.query.to });
+  if (view === "active") {
+    const kitchenStatuses = ["pending", "accepted", "preparing", "ready"];
+    if (req.query.status && !kitchenStatuses.includes(req.query.status)) scope._id = null;
+    if (!req.query.status) scope.status = { $in: kitchenStatuses };
+  }
+  const scopedQuery = await enrichOrderSearchQuery({
+    query: { ...ownerQuery, ...scope },
+    search: req.query.q,
+    User: require("../models/User"),
+    Restaurant,
+  });
+  if (ownerQuery.restaurant?.$in?.length) scopedQuery.hiddenForRestaurants = { $nin: ownerQuery.restaurant.$in };
   const { page, limit, skip } = paginationFromQuery(req.query);
   const [orders, total] = await Promise.all([
     Order.find(scopedQuery)
@@ -138,6 +152,16 @@ exports.getMyRestaurantOrders = async (req, res) => {
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
     filters: { view, activeStatuses: ACTIVE_ORDER_STATUSES, historyStatuses: TERMINAL_ORDER_STATUSES },
   });
+};
+
+exports.hideMyRestaurantOrder = async (req, res) => {
+  const ownerQuery = await orderQueryForOwner(req.user._id);
+  if (ownerQuery._id === null) return errorResponse(res, "Order not found for your restaurant", 404);
+  const order = await Order.findOne({ ...ownerQuery, _id: req.params.orderId });
+  if (!order) return errorResponse(res, "Order not found for your restaurant", 404);
+  if (!TERMINAL_ORDER_STATUSES.includes(order.status)) return errorResponse(res, "Only completed, cancelled, or rejected orders can be hidden", 400);
+  await Order.findByIdAndUpdate(order._id, { $addToSet: { hiddenForRestaurants: order.restaurant } });
+  return successResponse(res, "Order hidden from restaurant history", { id: order._id });
 };
 
 exports.getMyRestaurantDashboard = async (req, res) => {
@@ -417,6 +441,9 @@ exports.createMySupportTicket = async (req, res) => {
   const restaurant = await getOwnedRestaurant(req.user._id);
   if (!restaurant) return errorResponse(res, "Restaurant profile not found", 404);
   if (!req.body.description) return errorResponse(res, "Support ticket description is required", 400);
+  if (req.body.order && !mongoose.Types.ObjectId.isValid(req.body.order)) {
+    return errorResponse(res, "Related order ID is invalid. Leave it empty or paste a valid order ID.", 400);
+  }
   const ticket = await SupportTicket.create({
     restaurant: restaurant._id,
     owner: req.user._id,

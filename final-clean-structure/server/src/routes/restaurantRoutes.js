@@ -8,6 +8,7 @@ const {
   getMyRestaurantOrders,
   getMyRestaurantDashboard,
   getMyRestaurantOrderById,
+  hideMyRestaurantOrder,
   updateMyRestaurantOrderStatus,
   updateMyRestaurantOpenStatus,
   updateMyBusinessHours,
@@ -38,6 +39,7 @@ router.get("/my/orders", protect, roleMiddleware("restaurant", "admin"), getMyRe
 router.get("/my/dashboard", protect, roleMiddleware("restaurant", "admin"), getMyRestaurantDashboard);
 router.get("/my/reports", protect, roleMiddleware("restaurant", "admin"), getMyRestaurantReports);
 router.get("/my/orders/:orderId", protect, roleMiddleware("restaurant", "admin"), getMyRestaurantOrderById);
+router.patch("/my/orders/:orderId/hide", protect, roleMiddleware("restaurant", "admin"), hideMyRestaurantOrder);
 router.patch("/my/orders/:orderId/status", protect, roleMiddleware("restaurant", "admin"), updateMyRestaurantOrderStatus);
 router.patch("/my", protect, roleMiddleware("restaurant", "admin"), updateMyRestaurant);
 router.post("/my", protect, roleMiddleware("restaurant", "admin"), createRestaurant);

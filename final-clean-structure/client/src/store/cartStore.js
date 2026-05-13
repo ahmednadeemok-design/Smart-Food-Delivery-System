@@ -9,6 +9,11 @@ export const saveCart = (cart) => {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
 };
 
+export const getCartRestaurantId = (cart = getCart()) => {
+  const firstItem = cart.find((item) => item.restaurant);
+  return firstItem?.restaurant?._id || firstItem?.restaurant || "";
+};
+
 export const addToCart = (item) => {
   const cart = getCart();
   const quantity = Math.max(1, Number(item.quantity) || 1);
@@ -36,10 +41,10 @@ export const updateCartQuantity = (id, quantity) => {
 
 export const clearCart = () => saveCart([]);
 
-export const cartTotals = (cart) => {
+export const cartTotals = (cart, options = {}) => {
   const subtotal = cart.reduce((sum, item) => sum + Number(item.price || 0) * item.quantity, 0);
   const calories = cart.reduce((sum, item) => sum + Number(item.calories || 0) * item.quantity, 0);
-  const deliveryFee = cart.length ? 125 : 0;
+  const deliveryFee = cart.length ? Number(options.deliveryFee ?? cart[0]?.restaurantDeliveryFee ?? 125) : 0;
   const platformFee = cart.length ? Math.max(25, Math.round(subtotal * 0.03)) : 0;
   const serviceFee = cart.length ? 15 : 0;
   return { subtotal, calories, deliveryFee, platformFee, serviceFee, total: subtotal + deliveryFee + platformFee + serviceFee };

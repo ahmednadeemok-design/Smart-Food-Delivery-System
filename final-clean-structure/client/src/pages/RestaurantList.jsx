@@ -13,6 +13,9 @@ const distanceKm = (a, b) => {
   return Math.sqrt(latKm ** 2 + lngKm ** 2);
 };
 
+const etaMinutes = (restaurant) => Number(restaurant.averagePreparationTime || (restaurant.kitchenLoad === "high" ? 28 : restaurant.kitchenLoad === "medium" ? 22 : 16)) + 12;
+const kitchenLoadScore = (restaurant) => ({ low: 1, medium: 2, high: 3 }[restaurant.kitchenLoad] || 1);
+
 export default function RestaurantList() {
   const [restaurants, setRestaurants] = useState([]);
   const [searchParams] = useSearchParams();
@@ -35,16 +38,31 @@ export default function RestaurantList() {
     setQuery(searchParams.get("q") || "");
   }, [searchParams]);
 
-  const cuisines = [...new Set(restaurants.flatMap((restaurant) => restaurant.cuisineTypes || []))];
+  const cuisines = [...new Set(restaurants.flatMap((restaurant) => restaurant.cuisineTypes || []))].sort();
   const filteredRestaurants = restaurants.filter((restaurant) => {
-    const searchable = [restaurant.name, restaurant.description, restaurant.address].join(" ").toLowerCase();
-    const matchesQuery = searchable.includes(query.toLowerCase());
+    const searchTerm = query.trim().toLowerCase();
+    const menuKeywords = [
+      ...(restaurant.menuKeywords || []),
+      ...(restaurant.popularItems || []),
+      ...(restaurant.foodKeywords || []),
+    ];
+    const searchable = [
+      restaurant.name,
+      restaurant.description,
+      restaurant.address,
+      restaurant.localArea,
+      ...(restaurant.cuisineTypes || []),
+      ...menuKeywords,
+    ].filter(Boolean).join(" ").toLowerCase();
+    const matchesQuery = !searchTerm || searchable.includes(searchTerm);
     const matchesCuisine = !cuisine || restaurant.cuisineTypes?.includes(cuisine);
-    const matchesOpen = !onlyOpen || restaurant.isOpen !== false;
+    const matchesOpen = !onlyOpen || restaurant.isOpen === true;
     return matchesQuery && matchesCuisine && matchesOpen;
   }).sort((a, b) => {
     if (sort === "rating") return (b.rating || 0) - (a.rating || 0);
     if (sort === "delivery") return (a.deliveryFeeBase || 125) - (b.deliveryFeeBase || 125);
+    if (sort === "eta") return etaMinutes(a) - etaMinutes(b);
+    if (sort === "kitchen") return kitchenLoadScore(a) - kitchenLoadScore(b);
     return distanceKm(USER_LOCATION, a.location || USER_LOCATION) - distanceKm(USER_LOCATION, b.location || USER_LOCATION);
   });
 
@@ -71,6 +89,8 @@ export default function RestaurantList() {
               <option value="nearby">Nearest first</option>
               <option value="rating">Highest rated</option>
               <option value="delivery">Lowest delivery fee</option>
+              <option value="eta">Fastest ETA</option>
+              <option value="kitchen">Lowest kitchen load</option>
             </select>
             <label className="check-row"><input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} /> Open now</label>
           </aside>

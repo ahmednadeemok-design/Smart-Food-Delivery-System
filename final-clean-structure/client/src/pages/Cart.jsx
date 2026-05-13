@@ -28,13 +28,23 @@ export default function Cart() {
 
         <aside className="order-summary-card">
           <h3>Order Summary</h3>
-          <div className="summary-row"><span>Subtotal</span><b>{formatCurrency(totals.subtotal)}</b></div>
-          <div className="summary-row"><span>Delivery Fee</span><b>{formatCurrency(totals.deliveryFee)}</b></div>
-          <div className="summary-row"><span>Platform Fee</span><b>{formatCurrency(totals.platformFee)}</b></div>
-          <div className="summary-row"><span>Service Fee</span><b>{formatCurrency(totals.serviceFee)}</b></div>
-          <div className="summary-row total"><span>Total</span><b>{formatCurrency(totals.total)}</b></div>
-          <p className="muted">Total Calories: <b>{totals.calories} kcal</b></p>
-          {cart.length ? <Link className="btn summary-btn" to="/checkout">Go to checkout</Link> : <Link className="btn summary-btn" to="/restaurants">Browse Restaurants</Link>}
+          {cart.length === 0 ? (
+            <div className="summary-empty">
+              <h4>Your cart is empty</h4>
+              <p className="muted">Browse restaurants to add items. Fees and totals will appear after you choose food.</p>
+              <Link className="btn summary-btn" to="/restaurants">Browse Restaurants</Link>
+            </div>
+          ) : (
+            <>
+              <div className="summary-row"><span>Subtotal</span><b>{formatCurrency(totals.subtotal)}</b></div>
+              <div className="summary-row"><span>Delivery Fee</span><b>{formatCurrency(totals.deliveryFee)}</b></div>
+              <div className="summary-row"><span>Platform Fee</span><b>{formatCurrency(totals.platformFee)}</b></div>
+              <div className="summary-row"><span>Service Fee</span><b>{formatCurrency(totals.serviceFee)}</b></div>
+              <div className="summary-row total"><span>Total</span><b>{formatCurrency(totals.total)}</b></div>
+              <p className="muted">Total Calories: <b>{totals.calories} kcal</b></p>
+              <Link className="btn summary-btn" to="/checkout">Go to checkout</Link>
+            </>
+          )}
         </aside>
       </div>
     </section>

@@ -18,13 +18,14 @@ const {
   TERMINAL_ORDER_STATUSES,
   applyArchiveWindow,
   buildOrderScopeQuery,
+  enrichOrderSearchQuery,
   markArchivedIfTerminal,
   paginationFromQuery,
 } = require("../services/orderLifecycleService");
 
 const clampScore = (score) => Math.max(0, Math.min(100, Number(score)));
 const allowedRoles = ["customer", "rider", "restaurant", "admin"];
-const allowedOrderStatuses = ["pending", "accepted", "preparing", "ready", "assigned", "picked", "delivered", "cancelled", "rejected"];
+const allowedOrderStatuses = ["pending", "accepted", "preparing", "ready", "assigned", "picked", "on-the-way", "delivered", "cancelled", "rejected"];
 
 const logAction = (req, action, targetType, targetId, reason, metadata = {}) =>
   AdminAuditLog.create({ admin: req.user._id, action, targetType, targetId, reason, metadata });
@@ -241,9 +242,15 @@ exports.suspendRider = (req, res) => {
 };
 
 exports.listOrders = async (req, res) => {
-  const view = req.query.view || "active";
+  const requestedView = req.query.view || "active";
+  const view = ["active", "archived", "history", "trash"].includes(requestedView) ? requestedView : "active";
   await applyArchiveWindow(Order);
-  const scopedQuery = buildOrderScopeQuery({ view, status: req.query.status, search: req.query.q });
+  const scopedQuery = await enrichOrderSearchQuery({
+    query: buildOrderScopeQuery({ view, status: req.query.status, search: req.query.q, from: req.query.from, to: req.query.to }),
+    search: req.query.q,
+    User,
+    Restaurant,
+  });
   const { page, limit, skip } = paginationFromQuery(req.query);
   const [orders, total] = await Promise.all([
     Order.find(scopedQuery)
@@ -260,6 +267,53 @@ exports.listOrders = async (req, res) => {
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
     filters: { view, activeStatuses: ACTIVE_ORDER_STATUSES, historyStatuses: TERMINAL_ORDER_STATUSES },
   });
+};
+
+exports.softDeleteOrder = async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) return errorResponse(res, "Order not found", 404);
+  if (!TERMINAL_ORDER_STATUSES.includes(order.status)) {
+    return errorResponse(res, "Only delivered, cancelled, or rejected orders can be moved to trash", 400);
+  }
+  order.isArchived = true;
+  order.archivedAt = order.archivedAt || new Date();
+  order.isDeleted = true;
+  order.deletedAt = new Date();
+  order.deletedBy = req.user._id;
+  order.statusTimeline.push({ status: order.status, label: req.body.reason || "Moved to trash by admin", at: new Date() });
+  await order.save();
+  await logAction(req, "order.soft_delete", "order", order._id, req.body.reason || "Admin moved archived order to trash");
+  emitOrderRealtime(req, "admin:order-lifecycle", order, { lifecycleAction: "soft_delete" });
+  return successResponse(res, "Order moved to trash", order);
+};
+
+exports.restoreOrder = async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) return errorResponse(res, "Order not found", 404);
+  if (!order.isDeleted) return errorResponse(res, "Order is not in trash", 400);
+  order.isDeleted = false;
+  order.deletedAt = undefined;
+  order.deletedBy = undefined;
+  order.isArchived = true;
+  order.archivedAt = order.archivedAt || new Date();
+  order.statusTimeline.push({ status: order.status, label: req.body.reason || "Restored from trash by admin", at: new Date() });
+  await order.save();
+  await logAction(req, "order.restore", "order", order._id, req.body.reason || "Admin restored order from trash");
+  emitOrderRealtime(req, "admin:order-lifecycle", order, { lifecycleAction: "restore" });
+  return successResponse(res, "Order restored to archive", order);
+};
+
+exports.permanentlyDeleteOrder = async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) return errorResponse(res, "Order not found", 404);
+  if (!order.isDeleted) return errorResponse(res, "Move the order to trash before permanent deletion", 400);
+  await logAction(req, "order.permanent_delete", "order", order._id, req.body?.reason || "Admin permanently deleted order", {
+    status: order.status,
+    deletedAt: order.deletedAt,
+  });
+  await order.deleteOne();
+  emitAdminRealtime(req, "admin:order-lifecycle", { orderId: req.params.id, lifecycleAction: "permanent_delete" });
+  return successResponse(res, "Order permanently deleted", { id: req.params.id });
 };
 
 exports.updateOrder = async (req, res) => {
@@ -279,6 +333,7 @@ exports.updateOrder = async (req, res) => {
 
   const order = await Order.findById(req.params.id);
   if (!order) return errorResponse(res, "Order not found", 404);
+  if (order.isDeleted) return errorResponse(res, "Restore the order before changing status or assignment", 400);
   Object.assign(order, updates);
   if (updates.rider && ["ready", "accepted", "preparing"].includes(order.status)) {
     order.status = "assigned";

@@ -20,7 +20,7 @@ export default function ManageRestaurants() {
 
   const loadRestaurants = () => {
     getAdminRestaurants().then((res) => {
-      if (res.data.data?.length) setRestaurants(res.data.data);
+      setRestaurants(res.data.data || []);
     }).catch((err) => toast.error(err.message));
     getRestaurantSupportTickets().then((res) => setSupportTickets(res.data.data || [])).catch(() => {});
   };
@@ -71,6 +71,7 @@ export default function ManageRestaurants() {
     try {
       const res = await getAdminRestaurantMenu(row._id);
       setMenu(res.data.data || []);
+      if (!(res.data.data || []).length) toast.success("Menu is empty for this restaurant");
     } catch (err) {
       toast.error(err.message);
     }

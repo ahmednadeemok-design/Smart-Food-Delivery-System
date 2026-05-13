@@ -33,6 +33,9 @@ router.patch("/riders/:id/suspend", admin.suspendRider);
 
 router.get("/orders", admin.listOrders);
 router.patch("/orders/:id", admin.updateOrder);
+router.patch("/orders/:id/trash", admin.softDeleteOrder);
+router.patch("/orders/:id/restore", admin.restoreOrder);
+router.delete("/orders/:id/permanent", admin.permanentlyDeleteOrder);
 
 router.get("/complaints", admin.listComplaints);
 router.patch("/complaints/:id", admin.updateComplaint);

@@ -5,9 +5,10 @@ import Loading from "../components/common/Loading.jsx";
 import ErrorMessage from "../components/common/ErrorMessage.jsx";
 import { getRestaurantById, getRestaurantItems, getRestaurantReviews } from "../services/restaurantService.js";
 import { createReview } from "../services/reviewService.js";
-import { addToCart, cartTotals, getCart } from "../store/cartStore.js";
+import { addToCart, cartTotals, clearCart, getCart, getCartRestaurantId, removeFromCart, updateCartQuantity } from "../store/cartStore.js";
 import { toast } from "../utils/toast.js";
 import SmartMap from "../components/map/SmartMap.jsx";
+import formatCurrency from "../utils/formatCurrency.js";
 
 export default function RestaurantDetails() {
   const { id } = useParams();
@@ -17,6 +18,7 @@ export default function RestaurantDetails() {
   const [category, setCategory] = useState("");
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
   const [cart, setCart] = useState(() => getCart());
+  const [pendingItem, setPendingItem] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -30,9 +32,25 @@ export default function RestaurantDetails() {
   }, [id]);
 
   const handleAdd = (item) => {
-    setCart(addToCart({ ...item, restaurant: id }));
+    const currentRestaurantId = getCartRestaurantId(cart);
+    if (currentRestaurantId && String(currentRestaurantId) !== String(id)) {
+      setPendingItem(item);
+      return;
+    }
+    setCart(addToCart({ ...item, restaurant: id, restaurantName: restaurant?.name, restaurantDeliveryFee: restaurant?.deliveryFeeBase || 125 }));
     toast.success("Added to cart");
   };
+
+  const clearAndAddPending = () => {
+    if (!pendingItem) return;
+    clearCart();
+    setCart(addToCart({ ...pendingItem, restaurant: id, restaurantName: restaurant?.name, restaurantDeliveryFee: restaurant?.deliveryFeeBase || 125 }));
+    setPendingItem(null);
+    toast.success("Started a new order");
+  };
+
+  const remove = (itemId) => setCart(removeFromCart(itemId));
+  const updateQuantity = (itemId, quantity) => setCart(updateCartQuantity(itemId, quantity));
 
   const submitReview = async (e) => {
     e.preventDefault();
@@ -51,8 +69,9 @@ export default function RestaurantDetails() {
   const categories = [...new Set(items.map((item) => item.category).filter(Boolean))];
   const visibleItems = items.filter((item) => item.isAvailable !== false && (!category || item.category === category));
   const deliveryEstimate = (restaurant?.averagePreparationTime || 22) + 12;
-  const restaurantCart = cart.filter((item) => item.restaurant === id);
-  const totals = cartTotals(restaurantCart);
+  const restaurantCart = cart.filter((item) => String(item.restaurant?._id || item.restaurant) === String(id));
+  const totals = cartTotals(restaurantCart, { deliveryFee: restaurant?.deliveryFeeBase || 125 });
+  const oldRestaurantName = cart.find((item) => String(item.restaurant) !== String(id))?.restaurantName || "another restaurant";
   const groupedItems = categories.length
     ? categories.map((itemCategory) => ({
         category: itemCategory,
@@ -80,7 +99,7 @@ export default function RestaurantDetails() {
 
             <div className="restaurant-menu-layout">
               <div>
-                <div className="section-head" style={{ marginTop: 28 }}>
+                <div className="section-head" id="menu" style={{ marginTop: 28 }}>
                   <h2>Menu</h2>
                   <span className="muted">{visibleItems.length} available items</span>
                 </div>
@@ -104,16 +123,35 @@ export default function RestaurantDetails() {
               </div>
               <aside className="sticky-cart-summary">
                 <h3>Your order</h3>
+                <p className="muted cart-restaurant-name">{restaurant.name}</p>
                 {restaurantCart.length === 0 ? (
-                  <p className="muted">Add items from {restaurant.name} to start your basket.</p>
+                  <div className="cart-empty-mini">
+                    <p className="muted">Add items from this menu and your order summary will update instantly.</p>
+                    <a className="btn outline summary-btn" href="#menu">Browse menu</a>
+                  </div>
                 ) : (
                   <>
                     {restaurantCart.map((item) => (
                       <div className="mini-cart-line" key={item._id}>
-                        <span>{item.quantity} x {item.name}</span>
-                        <b>Rs. {Number(item.price * item.quantity).toLocaleString("en-PK")}</b>
+                        <div>
+                          <span>{item.name}</span>
+                          <small>{formatCurrency(item.price)} each</small>
+                          <div className="quantity-stepper compact">
+                            <button type="button" onClick={() => updateQuantity(item._id, item.quantity - 1)}>-</button>
+                            <span>{item.quantity}</span>
+                            <button type="button" onClick={() => updateQuantity(item._id, item.quantity + 1)}>+</button>
+                          </div>
+                        </div>
+                        <div className="mini-cart-price">
+                          <b>{formatCurrency(item.price * item.quantity)}</b>
+                          <button type="button" className="link-button" onClick={() => remove(item._id)}>Remove</button>
+                        </div>
                       </div>
                     ))}
+                    <div className="summary-row"><span>Subtotal</span><b>{formatCurrency(totals.subtotal)}</b></div>
+                    <div className="summary-row"><span>Delivery fee</span><b>{formatCurrency(totals.deliveryFee)}</b></div>
+                    <div className="summary-row"><span>Platform fee</span><b>{formatCurrency(totals.platformFee)}</b></div>
+                    <div className="summary-row"><span>Service fee</span><b>{formatCurrency(totals.serviceFee)}</b></div>
                     <div className="summary-row total"><span>Total</span><b>Rs. {Number(totals.total).toLocaleString("en-PK")}</b></div>
                     <Link className="btn summary-btn" to="/cart">View cart</Link>
                   </>
@@ -136,6 +174,18 @@ export default function RestaurantDetails() {
               {reviews.length === 0 && <p className="muted">No reviews yet.</p>}
             </div>
           </>
+        )}
+        {pendingItem && (
+          <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="new-order-title">
+            <div className="modal-card">
+              <h3 id="new-order-title">Start a new order?</h3>
+              <p className="muted">Your cart contains items from {oldRestaurantName}. To add items from {restaurant?.name}, clear your current cart first.</p>
+              <div className="action-row">
+                <button className="btn" type="button" onClick={clearAndAddPending}>Clear cart & add item</button>
+                <button className="btn outline" type="button" onClick={() => setPendingItem(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </section>

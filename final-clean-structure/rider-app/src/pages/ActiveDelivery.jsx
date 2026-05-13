@@ -149,7 +149,18 @@ export default function ActiveDelivery() {
                 <div className="detail-tile"><small>Your Location</small><b>{Number(location.lat).toFixed(4)}, {Number(location.lng).toFixed(4)}</b></div>
                 <div className="detail-tile"><small>OTP Instructions</small><b>{canVerifyOtp ? "Ask the customer for the 6-digit delivery OTP." : "Pick up the order first. OTP unlocks after pickup."}</b><p className="muted">Only enter OTP when the customer has received the food.</p></div>
               </div>
-            <div className="action-row" style={{ marginBottom: 12 }}><button className="btn outline" type="button">Contact Restaurant</button><button className="btn outline" type="button">Contact Customer</button></div>
+            <div className="action-row" style={{ marginBottom: 12 }}>
+              {activeOrder.restaurant?.phone ? (
+                <a className="btn outline" href={`tel:${activeOrder.restaurant.phone}`}>Contact Restaurant</a>
+              ) : (
+                <button className="btn outline" type="button" disabled title="Restaurant phone is not available for this order">Restaurant phone unavailable</button>
+              )}
+              {activeOrder.customer?.phone ? (
+                <a className="btn outline" href={`tel:${activeOrder.customer.phone}`}>Contact Customer</a>
+              ) : (
+                <button className="btn outline" type="button" disabled title="Customer phone is not available for this order">Customer phone unavailable</button>
+              )}
+            </div>
             {canMarkPicked && <button className="btn rider-primary-action" onClick={() => moveStatus("picked")}>Mark Picked</button>}
             {["assigned", "picked"].includes(activeOrder?.status) && (
               <div className="otp-action">

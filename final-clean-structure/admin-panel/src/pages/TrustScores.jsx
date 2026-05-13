@@ -31,8 +31,10 @@ export default function TrustScores() {
   }, []);
 
   const changeScore = async (actorType, actorId, name) => {
-    const change = Number(window.prompt(`Trust score change for ${name}. Use negative numbers for penalty.`, "-5"));
-    if (!Number.isFinite(change)) return;
+    const rawChange = window.prompt(`Trust score change for ${name}. Use negative numbers for penalty.`, "-5");
+    if (rawChange === null) return;
+    const change = Number(rawChange);
+    if (!Number.isFinite(change)) return toast.error("Enter a valid trust score change number.");
     const reason = window.prompt("Reason for trust score change", "Manual admin trust control");
     if (reason === null) return;
     try {

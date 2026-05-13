@@ -1,7 +1,7 @@
 import formatCurrency from "../../utils/formatCurrency.js";
 import StatusBadge from "../common/StatusBadge.jsx";
 
-export default function OrderTable({ orders, onStatusChange, mode = "active" }) {
+export default function OrderTable({ orders, onStatusChange, onHideOrder, mode = "active" }) {
   const nextActions = {
     pending: [
       { status: "accepted", label: "Accept", className: "btn success" },
@@ -46,6 +46,14 @@ export default function OrderTable({ orders, onStatusChange, mode = "active" }) 
                   {action.label}
                 </button>
               ))}
+              {mode !== "active" && (
+                <details className="more-actions">
+                  <summary aria-label="More actions">⋮ More Actions</summary>
+                  <div className="more-actions-menu">
+                    <button className="danger-text" onClick={() => onHideOrder?.(order)}>Hide from History</button>
+                  </div>
+                </details>
+              )}
             </div>
           </div>
         </div>

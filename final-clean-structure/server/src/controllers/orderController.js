@@ -16,6 +16,7 @@ const {
   TERMINAL_ORDER_STATUSES,
   applyArchiveWindow,
   buildOrderScopeQuery,
+  enrichOrderSearchQuery,
   markArchivedIfTerminal,
   paginationFromQuery,
 } = require("../services/orderLifecycleService");
@@ -190,8 +191,15 @@ exports.getMyOrders = async (req, res) => {
   }
 
   await applyArchiveWindow(Order, query);
-  const view = req.query.view || "history";
-  const scopedQuery = { ...query, ...buildOrderScopeQuery({ view, status: req.query.status, search: req.query.q }) };
+  const requestedView = req.query.view || "history";
+  const view = ["active", "history", "archived"].includes(requestedView) ? requestedView : "history";
+  const scopedQuery = await enrichOrderSearchQuery({
+    query: { ...query, ...buildOrderScopeQuery({ view, status: req.query.status, search: req.query.q, from: req.query.from, to: req.query.to }) },
+    search: req.query.q,
+    User: require("../models/User"),
+    Restaurant,
+  });
+  if (req.user.role === "customer") scopedQuery.hiddenForCustomers = { $ne: req.user._id };
   const { page, limit, skip } = paginationFromQuery(req.query);
   const [orders, total] = await Promise.all([
     Order.find(scopedQuery)
@@ -208,6 +216,16 @@ exports.getMyOrders = async (req, res) => {
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
     filters: { view, activeStatuses: ACTIVE_ORDER_STATUSES, historyStatuses: TERMINAL_ORDER_STATUSES },
   });
+};
+
+exports.hideMyOrder = async (req, res) => {
+  const order = await Order.findById(req.params.id || req.params.orderId);
+  if (!order) return errorResponse(res, "Order not found", 404);
+  if (order.isDeleted && req.user.role !== "admin") return errorResponse(res, "Order not found", 404);
+  if (String(order.customer) !== String(req.user._id)) return errorResponse(res, "Not allowed to hide another customer's order", 403);
+  if (!TERMINAL_ORDER_STATUSES.includes(order.status)) return errorResponse(res, "Only completed, cancelled, or rejected orders can be hidden", 400);
+  await Order.findByIdAndUpdate(order._id, { $addToSet: { hiddenForCustomers: req.user._id } });
+  return successResponse(res, "Order hidden from your history", { id: order._id });
 };
 
 exports.getOrderById = async (req, res) => {
@@ -260,11 +278,12 @@ exports.cancelMyOrder = async (req, res) => {
 };
 
 exports.updateOrderStatus = async (req, res) => {
-  const allowedStatuses = ["pending", "accepted", "preparing", "ready", "assigned", "picked", "delivered", "cancelled", "rejected"];
+  const allowedStatuses = ["pending", "accepted", "preparing", "ready", "assigned", "picked", "on-the-way", "delivered", "cancelled", "rejected"];
   if (!allowedStatuses.includes(req.body.status)) return errorResponse(res, "Invalid order status", 400);
 
   const order = await Order.findById(req.params.id || req.params.orderId);
   if (!order) return errorResponse(res, "Order not found", 404);
+  if (order.isDeleted) return errorResponse(res, "Order not found", 404);
   if (req.user.role === "restaurant") {
     const ownsRestaurant = await Restaurant.exists({ _id: order.restaurant, owner: req.user._id });
     if (!ownsRestaurant) return errorResponse(res, "Not allowed to update another restaurant's order", 403);
@@ -320,6 +339,7 @@ exports.getAvailableOrders = async (req, res) => {
   const orders = await Order.find({
     status: "ready",
     isArchived: { $ne: true },
+    isDeleted: { $ne: true },
     ...(rider ? { rejectedByRiders: { $ne: rider._id } } : {}),
     $or: [{ rider: { $exists: false } }, { rider: null }],
   }).populate("restaurant customer", "name address location phone").sort({ emergencyMode: -1, createdAt: 1 }).limit(50);
@@ -334,11 +354,11 @@ exports.acceptOrder = async (req, res) => {
     return errorResponse(res, "Rider is not approved for deliveries", 403);
   }
   if (!rider.isOnline) return errorResponse(res, "Go online before accepting orders.", 400);
-  const busyOrder = await Order.exists({ rider: rider._id, status: { $in: ["assigned", "picked"] } });
+  const busyOrder = await Order.exists({ rider: rider._id, status: { $in: ["assigned", "picked", "on-the-way"] }, isDeleted: { $ne: true } });
   if (busyOrder) return errorResponse(res, "Complete your active delivery before accepting another order.", 400);
 
   const order = await Order.findOneAndUpdate(
-    { _id: req.params.id || req.params.orderId, status: "ready", rejectedByRiders: { $ne: rider._id }, $or: [{ rider: { $exists: false } }, { rider: null }] },
+    { _id: req.params.id || req.params.orderId, status: "ready", isDeleted: { $ne: true }, rejectedByRiders: { $ne: rider._id }, $or: [{ rider: { $exists: false } }, { rider: null }] },
     {
       $set: { rider: rider._id, status: "assigned", assignedAt: new Date() },
       $push: { statusTimeline: { status: "assigned", label: "Delivery assigned to rider", at: new Date() } },
@@ -382,7 +402,7 @@ exports.verifyDelivery = async (req, res) => {
     if (!rider || String(order.rider) !== String(rider._id)) return errorResponse(res, "Not allowed to verify an unassigned delivery", 403);
   }
 
-  if (!["assigned", "picked"].includes(order.status)) return errorResponse(res, "Delivery OTP can only be verified after rider assignment or pickup", 400);
+  if (!["assigned", "picked", "on-the-way"].includes(order.status)) return errorResponse(res, "Delivery OTP can only be verified after rider assignment or pickup", 400);
   if (!verifyOTP(order.otp, req.body.otp)) {
     emitOrderRealtime(req, "rider:otp-verification-result", order, { ok: false, message: "Invalid delivery OTP" });
     return errorResponse(res, "Invalid delivery OTP", 400);

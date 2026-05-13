@@ -24,7 +24,7 @@ const orderSchema = new mongoose.Schema(
     deliveryLocation: { lat: Number, lng: Number },
     status: {
       type: String,
-      enum: ["pending", "accepted", "preparing", "ready", "assigned", "picked", "delivered", "cancelled", "rejected"],
+      enum: ["pending", "accepted", "preparing", "ready", "assigned", "picked", "on-the-way", "delivered", "cancelled", "rejected"],
       default: "pending",
     },
     paymentMethod: { type: String, enum: ["cod", "jazzcash", "easypaisa", "card", "stripe", "wallet"], default: "cod" },
@@ -74,13 +74,19 @@ const orderSchema = new mongoose.Schema(
     deliveredAt: Date,
     isArchived: { type: Boolean, default: false, index: true },
     archivedAt: Date,
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: Date,
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    hiddenForCustomers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    hiddenForRestaurants: [{ type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" }],
   },
   { timestamps: true }
 );
 
-orderSchema.index({ status: 1, isArchived: 1, createdAt: -1 });
+orderSchema.index({ status: 1, isArchived: 1, isDeleted: 1, createdAt: -1 });
 orderSchema.index({ customer: 1, status: 1, createdAt: -1 });
 orderSchema.index({ restaurant: 1, status: 1, createdAt: -1 });
 orderSchema.index({ rider: 1, status: 1, updatedAt: -1 });
+orderSchema.index({ isDeleted: 1, deletedAt: 1 });
 
 module.exports = mongoose.model("Order", orderSchema);
