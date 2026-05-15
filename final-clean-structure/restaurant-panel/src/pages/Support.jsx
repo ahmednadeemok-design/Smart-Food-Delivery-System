@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createSupportTicket, getSupportTickets } from "../services/restaurantService.js";
 import { toast } from "../utils/toast.js";
+import ContactActions from "../components/common/ContactActions.jsx";
 
 export default function Support() {
   const [tickets, setTickets] = useState([]);
@@ -32,6 +33,9 @@ export default function Support() {
       <div className="container">
         <h1>Partner Support</h1>
         <p className="muted">Raise operational issues for menu, payout, orders, account, or technical support.</p>
+        <div className="card" style={{ marginBottom: 16 }}>
+          <ContactActions title="SmartFood Admin Support" subtitle="Partner operations" />
+        </div>
 
         <div className="grid grid-2">
           <form className="card form" onSubmit={submit}>

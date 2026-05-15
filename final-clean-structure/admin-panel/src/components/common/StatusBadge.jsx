@@ -22,6 +22,14 @@ const STATUS_CLASS = {
   low: "success",
   refunded: "warning",
   cash_collected: "success",
+  posted: "success",
+  reserved: "info",
+  processing: "info",
+  completed: "success",
+  failed: "danger",
+  reconciled: "success",
+  collected: "warning",
+  complete: "success",
 };
 
 export default function StatusBadge({ value, children, className = "" }) {

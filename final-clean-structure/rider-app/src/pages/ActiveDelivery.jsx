@@ -7,6 +7,7 @@ import { markPicked, verifyDelivery } from "../services/orderService.js";
 import { getActiveOrder, updateRiderLocation } from "../services/riderService.js";
 import { toast } from "../utils/toast.js";
 import StatusBadge from "../components/common/StatusBadge.jsx";
+import ContactActions from "../components/common/ContactActions.jsx";
 
 const NAROWAL_CENTER = { lat: 32.1020, lng: 74.8740 };
 
@@ -26,6 +27,8 @@ const routePointsFor = (order, location) => {
   ];
 };
 
+const contactStatuses = ["assigned", "picked", "on-the-way"];
+
 export default function ActiveDelivery() {
   const [location, setLocation] = useState({ lat: 32.1014, lng: 74.8730 });
   const [activeOrder, setActiveOrder] = useState(null);
@@ -33,6 +36,7 @@ export default function ActiveDelivery() {
   const [otp, setOtp] = useState("");
   const canVerifyOtp = activeOrder?.status === "picked";
   const canMarkPicked = activeOrder?.status === "assigned";
+  const canShowDeliveryContacts = contactStatuses.includes(activeOrder?.status);
   const completedOrder = lastCompleted && !activeOrder ? lastCompleted : null;
 
   const loadActiveOrder = async () => {
@@ -149,18 +153,24 @@ export default function ActiveDelivery() {
                 <div className="detail-tile"><small>Your Location</small><b>{Number(location.lat).toFixed(4)}, {Number(location.lng).toFixed(4)}</b></div>
                 <div className="detail-tile"><small>OTP Instructions</small><b>{canVerifyOtp ? "Ask the customer for the 6-digit delivery OTP." : "Pick up the order first. OTP unlocks after pickup."}</b><p className="muted">Only enter OTP when the customer has received the food.</p></div>
               </div>
-            <div className="action-row" style={{ marginBottom: 12 }}>
-              {activeOrder.restaurant?.phone ? (
-                <a className="btn outline" href={`tel:${activeOrder.restaurant.phone}`}>Contact Restaurant</a>
-              ) : (
-                <button className="btn outline" type="button" disabled title="Restaurant phone is not available for this order">Restaurant phone unavailable</button>
-              )}
-              {activeOrder.customer?.phone ? (
-                <a className="btn outline" href={`tel:${activeOrder.customer.phone}`}>Contact Customer</a>
-              ) : (
-                <button className="btn outline" type="button" disabled title="Customer phone is not available for this order">Customer phone unavailable</button>
-              )}
-            </div>
+            {canShowDeliveryContacts && (
+              <div className="contact-grid">
+                <ContactActions
+                  title={activeOrder.restaurant?.name || "Restaurant"}
+                  subtitle="Pickup contact"
+                  phone={activeOrder.restaurant?.supportContact || activeOrder.restaurant?.phone}
+                  location={activeOrder.restaurant?.location}
+                  address={activeOrder.restaurant?.address}
+                />
+                <ContactActions
+                  title={activeOrder.customer?.name || "Customer"}
+                  subtitle="Drop-off contact"
+                  phone={activeOrder.customer?.phone}
+                  location={activeOrder.deliveryLocation}
+                  address={activeOrder.deliveryAddress}
+                />
+              </div>
+            )}
             {canMarkPicked && <button className="btn rider-primary-action" onClick={() => moveStatus("picked")}>Mark Picked</button>}
             {["assigned", "picked"].includes(activeOrder?.status) && (
               <div className="otp-action">

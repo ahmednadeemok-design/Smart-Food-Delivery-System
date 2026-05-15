@@ -16,6 +16,13 @@ const STATUS_CLASS = {
   busy: "info",
   offline: "warning",
   emergency: "danger",
+  posted: "success",
+  reserved: "info",
+  processing: "info",
+  completed: "success",
+  failed: "danger",
+  collected: "warning",
+  reconciled: "success",
 };
 
 export default function StatusBadge({ value, children, className = "" }) {

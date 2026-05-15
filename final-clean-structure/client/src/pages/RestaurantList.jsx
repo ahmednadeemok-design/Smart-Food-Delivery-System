@@ -27,6 +27,7 @@ export default function RestaurantList() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setLoading(true);
     getRestaurants()
       .then((res) => setRestaurants(res.data.data))
       .catch((err) => setError(err.message))

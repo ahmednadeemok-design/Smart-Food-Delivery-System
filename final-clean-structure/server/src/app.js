@@ -3,21 +3,21 @@ const cors = require("cors");
 const morgan = require("morgan");
 const errorHandler = require("./middlewares/errorMiddleware");
 const { corsOptions } = require("./config/cors");
+const { rateLimit, securityHeaders } = require("./middlewares/securityMiddleware");
 
 const app = express();
 
 app.disable("x-powered-by");
-app.use((req, res, next) => {
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Referrer-Policy", "no-referrer");
-  res.setHeader("X-Frame-Options", "DENY");
-  next();
-});
+app.use(securityHeaders);
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
-app.use(express.json({ limit: "10mb" }));
+app.use("/api/auth", rateLimit({ windowMs: 15 * 60 * 1000, max: 60, keyPrefix: "auth" }));
+app.use("/api/admin/finance", rateLimit({ windowMs: 60 * 1000, max: 120, keyPrefix: "admin-finance" }));
+app.use("/api/payments", rateLimit({ windowMs: 60 * 1000, max: 90, keyPrefix: "payments" }));
+
+app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 if (process.env.NODE_ENV === "development") {

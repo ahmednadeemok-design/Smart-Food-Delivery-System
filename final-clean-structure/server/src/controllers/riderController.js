@@ -4,6 +4,8 @@ const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { clampLocation } = require("../constants/narowal");
 const { emitAdminRealtime, emitOrderRealtime, emitRiderRealtime } = require("../services/realtimeService");
 const { TERMINAL_ORDER_STATUSES, applyArchiveWindow, paginationFromQuery } = require("../services/orderLifecycleService");
+const { sanitizeOrderForRole, sanitizeOrdersForRole } = require("../services/contactPrivacyService");
+const { createPayoutRequest, getRiderFinance } = require("../services/financeService");
 
 const sanitizeRiderPayload = (body = {}) => ({
   vehicleType: ["bike", "car", "cycle"].includes(body.vehicleType) ? body.vehicleType : "bike",
@@ -14,6 +16,7 @@ const sanitizeRiderPayload = (body = {}) => ({
   drivingLicense: String(body.drivingLicense || body.drivingLicence || "").trim(),
   emergencyContact: String(body.emergencyContact || "").trim(),
   preferredArea: String(body.preferredArea || "").trim(),
+  serviceZones: Array.isArray(body.serviceZones) ? body.serviceZones.map((zone) => String(zone).trim()).filter(Boolean) : String(body.serviceZones || body.preferredArea || "").split(",").map((zone) => zone.trim()).filter(Boolean),
   ageConfirmed: Boolean(body.ageConfirmed),
   paymentAccountType: ["JazzCash", "EasyPaisa", "HBL Konnect", "NayaPay", "SadaPay", "Bank"].includes(body.paymentAccountType) ? body.paymentAccountType : "",
   accountTitle: String(body.accountTitle || "").trim(),
@@ -26,6 +29,12 @@ const sanitizeRiderPayload = (body = {}) => ({
     iban: body.iban || "",
   },
   profileImage: body.profileImage || "",
+  cnicFrontImage: body.cnicFrontImage || "",
+  cnicBackImage: body.cnicBackImage || "",
+  drivingLicenseImage: body.drivingLicenseImage || "",
+  vehicleRegistrationImage: body.vehicleRegistrationImage || "",
+  verificationNotes: body.verificationNotes || "",
+  documentStatus: body.documentStatus || (body.cnicFrontImage || body.cnicBackImage || body.drivingLicenseImage ? "submitted" : "missing"),
   phoneVerified: Boolean(body.phoneVerified),
   currentLocation: clampLocation(body.currentLocation || body.location),
   isOnline: body.isOnline !== undefined ? Boolean(body.isOnline) : false,
@@ -162,10 +171,10 @@ exports.getActiveOrder = async (req, res) => {
   if (!rider) return successResponse(res, "No rider profile found", null);
   const order = await Order.findOne({ rider: rider._id, status: { $in: activeStatuses } })
     .populate("customer", "name email phone")
-    .populate("restaurant", "name address location phone localArea")
+    .populate("restaurant", "name address location phone supportContact localArea")
     .populate({ path: "rider", populate: { path: "user", select: "name phone email" } })
     .sort("-updatedAt");
-  return successResponse(res, order ? "Active order fetched" : "No active delivery", order);
+  return successResponse(res, order ? "Active order fetched" : "No active delivery", sanitizeOrderForRole(order, req));
 };
 
 exports.getRiderHistory = async (req, res) => {
@@ -184,7 +193,7 @@ exports.getRiderHistory = async (req, res) => {
     Order.countDocuments(query),
   ]);
   return successResponse(res, "Rider delivery history fetched", {
-    orders,
+    orders: sanitizeOrdersForRole(orders, req),
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
   });
 };
@@ -206,4 +215,37 @@ exports.getRiderEarnings = async (req, res) => {
     walletBalance: rider.walletBalance || 0,
     recent,
   });
+};
+
+exports.getMyRiderFinance = async (req, res) => {
+  try {
+    const rider = await Rider.findOne({ user: req.user._id });
+    if (!rider) return successResponse(res, "No rider profile found", null);
+    const finance = await getRiderFinance(rider);
+    return successResponse(res, "Rider finance fetched", finance);
+  } catch (error) {
+    return errorResponse(res, error.message || "Unable to load rider finance", 500);
+  }
+};
+
+exports.createMyRiderPayoutRequest = async (req, res) => {
+  try {
+    const rider = await Rider.findOne({ user: req.user._id });
+    if (!rider) return errorResponse(res, "Complete rider profile before requesting payout", 400);
+    if (!rider.paymentAccountNumber && !rider.iban && !rider.paymentAccount?.number) {
+      return errorResponse(res, "Add a payout account before requesting payout", 400);
+    }
+    const payout = await createPayoutRequest({
+      requesterType: "rider",
+      rider,
+      user: req.user,
+      amount: req.body.amount,
+      notes: req.body.notes,
+    });
+    emitAdminRealtime(req, "admin:payout-requested", { payout });
+    emitRiderRealtime(req, "rider:finance-updated", rider, { payout });
+    return successResponse(res, "Rider payout request submitted", payout, 201);
+  } catch (error) {
+    return errorResponse(res, error.message || "Unable to request payout", 400);
+  }
 };

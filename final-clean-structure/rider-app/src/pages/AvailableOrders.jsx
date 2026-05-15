@@ -29,6 +29,7 @@ export default function AvailableOrders() {
   const [orders, setOrders] = useState([]);
   const [profile, setProfile] = useState(null);
   const [needsProfile, setNeedsProfile] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const loadOrders = async () => {
     try {
@@ -38,6 +39,8 @@ export default function AvailableOrders() {
     } catch (err) {
       toast.error(err.message);
       setOrders([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -119,7 +122,8 @@ export default function AvailableOrders() {
         {profile && (profile.isSuspended || profile.approvalStatus === "suspended") && <div className="card" style={{ marginBottom: 18 }}><span className="badge danger">Suspended</span><p className="muted">Suspended riders cannot accept delivery jobs.</p></div>}
         {profile && !profile.isOnline && <div className="card" style={{ marginBottom: 18 }}><b>Go Online first</b><p className="muted">Go online from the rider dashboard to accept available orders.</p></div>}
         <div className="grid">
-          {orders.map((order) => (
+          {loading && <div className="card loading-card"><span className="badge">Loading</span><span>Checking ready deliveries...</span></div>}
+          {!loading && orders.map((order) => (
             <div className="grid grid-2" key={order._id}>
               <OrderCard order={order} onAccept={handleAcceptOrder} onReject={handleRejectOrder} />
               <RouteMap points={[
@@ -128,7 +132,7 @@ export default function AvailableOrders() {
               ]} />
             </div>
           ))}
-          {orders.length === 0 && <div className="empty-state"><h3>No available deliveries</h3><p>No ready orders yet. Stay online and check again soon.</p></div>}
+          {!loading && orders.length === 0 && <div className="empty-state"><h3>No available deliveries</h3><p>No ready orders yet. Stay online and check again soon.</p></div>}
         </div>
       </div>
     </section>

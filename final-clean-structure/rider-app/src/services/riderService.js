@@ -7,3 +7,6 @@ export const updateRiderLocation = (currentLocation, isOnline = true) => api.pat
 export const getActiveOrder = () => api.get("/riders/active-order");
 export const getRiderHistory = (params = {}) => api.get("/riders/history", { params });
 export const getRiderEarnings = () => api.get("/riders/earnings");
+export const getRiderFinance = () => api.get("/riders/finance");
+export const createRiderPayoutRequest = (payload) => api.post("/riders/payout-requests", payload);
+export const updateRiderAccount = (payload) => api.put("/users/profile", payload);

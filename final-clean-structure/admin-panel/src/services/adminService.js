@@ -33,6 +33,12 @@ export const updateAdminComplaint = (id, payload) => api.patch(`/admin/complaint
 export const getAdminPayments = () => api.get("/admin/payments");
 export const refundAdminPayment = (id, payload) => api.patch(`/admin/payments/${id}/refund`, payload);
 export const getFinanceSummary = () => api.get("/admin/finance/summary");
+export const getFinanceDashboard = () => api.get("/admin/finance/dashboard");
+export const getFinanceTransactions = (params = {}) => api.get("/admin/finance/transactions", { params });
+export const getPayoutRequests = (params = {}) => api.get("/admin/finance/payout-requests", { params });
+export const updatePayoutRequest = (id, payload) => api.patch(`/admin/finance/payout-requests/${id}`, payload);
+export const getCODCollections = (params = {}) => api.get("/admin/finance/cod-collections", { params });
+export const reconcileCODCollection = (id, payload = {}) => api.patch(`/admin/finance/cod-collections/${id}/reconcile`, payload);
 
 export const adjustTrustScore = (payload) => api.post("/admin/trust-scores", payload);
 export const getTrustHistory = () => api.get("/admin/trust-scores");

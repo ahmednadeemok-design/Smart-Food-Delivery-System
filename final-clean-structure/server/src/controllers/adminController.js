@@ -5,14 +5,18 @@ const Rider = require("../models/Rider");
 const Order = require("../models/Order");
 const Complaint = require("../models/Complaint");
 const Payment = require("../models/Payment");
+const FinanceTransaction = require("../models/FinanceTransaction");
+const PayoutRequest = require("../models/PayoutRequest");
+const CODCollection = require("../models/CODCollection");
 const TrustScore = require("../models/TrustScore");
 const AdminAuditLog = require("../models/AdminAuditLog");
 const Campaign = require("../models/Campaign");
 const SupportTicket = require("../models/SupportTicket");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
-const { settleCodDelivery } = require("../services/financeService");
+const { financeOverview, recordRefundLedger, settleCodDelivery, updatePayoutStatus } = require("../services/financeService");
 const { sendRestaurantApproval, sendRiderApproval, sendTemporaryPassword, sendOrderUpdate } = require("../utils/emailService");
 const { emitAdminRealtime, emitOrderRealtime, emitRestaurantRealtime, emitRiderRealtime } = require("../services/realtimeService");
+const { sanitizeOrdersForRole } = require("../services/contactPrivacyService");
 const {
   ACTIVE_ORDER_STATUSES,
   TERMINAL_ORDER_STATUSES,
@@ -95,7 +99,7 @@ exports.getRestaurant = async (req, res) => {
 };
 
 exports.updateRestaurant = async (req, res) => {
-  const allowed = ["name", "description", "phone", "supportContact", "address", "localArea", "location", "image", "logo", "banner", "cuisineTypes", "businessHours", "isOpen", "isActive", "approvalStatus", "qualityFlag", "qualityFlagReason", "kitchenLoad", "averagePreparationTime", "accuracyRate", "trustScore", "rating"];
+  const allowed = ["name", "description", "phone", "supportContact", "address", "localArea", "location", "image", "logo", "banner", "cuisineTypes", "businessHours", "isOpen", "isActive", "approvalStatus", "qualityFlag", "qualityFlagReason", "kitchenLoad", "averagePreparationTime", "accuracyRate", "trustScore", "rating", "deliveryRadiusKm", "ownerPhone", "ownerEmail", "licenseImage", "cnicFrontImage", "cnicBackImage", "kitchenImage", "documentStatus", "verificationNotes"];
   const updates = {};
   allowed.forEach((key) => {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -203,7 +207,7 @@ exports.getRider = async (req, res) => {
 };
 
 exports.updateRider = async (req, res) => {
-  const allowed = ["approvalStatus", "isActive", "isOnline", "isSuspended", "suspensionReason", "trustScore", "workloadScore", "maxBatchOrders"];
+  const allowed = ["approvalStatus", "isActive", "isOnline", "isSuspended", "suspensionReason", "trustScore", "workloadScore", "maxBatchOrders", "documentStatus", "verificationNotes"];
   const updates = {};
   allowed.forEach((key) => {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -255,7 +259,7 @@ exports.listOrders = async (req, res) => {
   const [orders, total] = await Promise.all([
     Order.find(scopedQuery)
       .populate("customer", "name email phone")
-      .populate("restaurant", "name address localArea")
+      .populate("restaurant", "name address localArea phone supportContact location")
       .populate({ path: "rider", populate: { path: "user", select: "name email phone" } })
       .sort(view === "active" ? { emergencyMode: -1, createdAt: -1 } : { updatedAt: -1 })
       .skip(skip)
@@ -263,7 +267,7 @@ exports.listOrders = async (req, res) => {
     Order.countDocuments(scopedQuery),
   ]);
   return successResponse(res, "Admin orders fetched", {
-    orders,
+    orders: sanitizeOrdersForRole(orders, req),
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
     filters: { view, activeStatuses: ACTIVE_ORDER_STATUSES, historyStatuses: TERMINAL_ORDER_STATUSES },
   });
@@ -372,7 +376,12 @@ exports.updateOrder = async (req, res) => {
 };
 
 exports.listComplaints = async (req, res) => {
-  const complaints = await Complaint.find().populate("order customer").sort("-createdAt");
+  const complaints = await Complaint.find()
+    .populate("order")
+    .populate("customer", "name email phone")
+    .populate("restaurant", "name phone address localArea")
+    .populate({ path: "rider", populate: { path: "user", select: "name email phone" } })
+    .sort("-createdAt");
   return successResponse(res, "Admin complaints fetched", complaints);
 };
 
@@ -406,9 +415,11 @@ exports.refundPayment = async (req, res) => {
   if (!payment) return errorResponse(res, "Payment not found", 404);
   const order = await Order.findById(payment.order);
   if (req.body.approved) {
+    if (payment.refundStatus === "refunded") return errorResponse(res, "Payment is already refunded", 400);
+    const refundAmount = Math.min(Number(req.body.amount || payment.refundAmount || payment.amount || 0), Number(payment.amount || 0));
     payment.status = "refunded";
     payment.refundStatus = "refunded";
-    payment.refundAmount = Number(req.body.amount || payment.refundAmount || payment.amount || 0);
+    payment.refundAmount = refundAmount;
     payment.refundReason = req.body.reason || "Admin approved refund";
     payment.refundedAt = new Date();
     if (order) {
@@ -419,6 +430,7 @@ exports.refundPayment = async (req, res) => {
       order.refundedAt = new Date();
       await order.save();
     }
+    await recordRefundLedger({ order, payment, amount: refundAmount, reason: payment.refundReason });
   } else {
     payment.refundStatus = "rejected";
     payment.refundReason = req.body.reason || "Admin rejected refund";
@@ -437,6 +449,7 @@ exports.refundPayment = async (req, res) => {
 };
 
 exports.financialSummary = async (req, res) => {
+  const overview = await financeOverview();
   const [orders, payments, riders, restaurants] = await Promise.all([
     Order.find(),
     Payment.find(),
@@ -458,7 +471,81 @@ exports.financialSummary = async (req, res) => {
     deliveredOrders: deliveredOrders.length,
   };
 
-  return successResponse(res, "Financial summary fetched", { totals, riders, restaurants, payments });
+  return successResponse(res, "Financial summary fetched", { totals: { ...totals, ...(overview.totals || {}) }, riders, restaurants, payments });
+};
+
+exports.financeDashboard = async (req, res) => {
+  const overview = await financeOverview();
+  return successResponse(res, "Finance dashboard fetched", overview);
+};
+
+exports.listFinanceTransactions = async (req, res) => {
+  const query = {};
+  if (req.query.type) query.type = req.query.type;
+  if (req.query.status) query.status = req.query.status;
+  if (req.query.restaurant) query.restaurant = req.query.restaurant;
+  if (req.query.rider) query.rider = req.query.rider;
+  const transactions = await FinanceTransaction.find(query)
+    .populate("order", "status totalAmount paymentMethod")
+    .populate("restaurant", "name localArea")
+    .populate({ path: "rider", populate: { path: "user", select: "name phone" } })
+    .populate("payoutRequest", "status amount requesterType")
+    .sort("-createdAt")
+    .limit(200);
+  return successResponse(res, "Finance transactions fetched", transactions);
+};
+
+exports.listPayoutRequests = async (req, res) => {
+  const query = {};
+  if (req.query.status) query.status = req.query.status;
+  if (req.query.requesterType) query.requesterType = req.query.requesterType;
+  const payouts = await PayoutRequest.find(query)
+    .populate("restaurant", "name localArea pendingSettlement")
+    .populate({ path: "rider", populate: { path: "user", select: "name phone" } })
+    .populate("requestedBy reviewedBy", "name email")
+    .sort("-createdAt")
+    .limit(200);
+  return successResponse(res, "Payout requests fetched", payouts);
+};
+
+exports.updatePayoutRequest = async (req, res) => {
+  try {
+    const payout = await PayoutRequest.findById(req.params.id);
+    if (!payout) return errorResponse(res, "Payout request not found", 404);
+    const updated = await updatePayoutStatus({ payout, status: req.body.status, admin: req.user, notes: req.body.notes });
+    await logAction(req, `payout.${req.body.status}`, "payout_request", updated._id, req.body.notes || `Payout marked ${req.body.status}`);
+    emitAdminRealtime(req, "admin:payout-updated", { payout: updated });
+    if (updated.restaurant) emitRestaurantRealtime(req, "restaurant:finance-updated", updated.restaurant, { payout: updated });
+    if (updated.rider) emitRiderRealtime(req, "rider:finance-updated", updated.rider, { payout: updated });
+    return successResponse(res, "Payout request updated", updated);
+  } catch (error) {
+    return errorResponse(res, error.message || "Unable to update payout", 400);
+  }
+};
+
+exports.listCODCollections = async (req, res) => {
+  const query = {};
+  if (req.query.status) query.status = req.query.status;
+  const collections = await CODCollection.find(query)
+    .populate("order", "status totalAmount deliveredAt")
+    .populate("restaurant", "name localArea")
+    .populate({ path: "rider", populate: { path: "user", select: "name phone" } })
+    .sort("-createdAt")
+    .limit(200);
+  return successResponse(res, "COD collections fetched", collections);
+};
+
+exports.reconcileCODCollection = async (req, res) => {
+  const collection = await CODCollection.findById(req.params.id);
+  if (!collection) return errorResponse(res, "COD collection not found", 404);
+  if (collection.status === "reconciled") return errorResponse(res, "COD collection already reconciled", 400);
+  collection.status = "reconciled";
+  collection.reconciledAt = new Date();
+  collection.note = req.body.note || "Reconciled by finance admin";
+  await collection.save();
+  await logAction(req, "cod.reconcile", "cod_collection", collection._id, collection.note);
+  emitAdminRealtime(req, "admin:cod-reconciled", { collection });
+  return successResponse(res, "COD collection reconciled", collection);
 };
 
 const applyTrustChange = async (req, actorType, actorId, change, reason) => {

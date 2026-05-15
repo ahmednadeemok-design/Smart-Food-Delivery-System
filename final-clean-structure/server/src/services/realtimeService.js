@@ -1,9 +1,11 @@
+const { sanitizeOrderForRole } = require("./contactPrivacyService");
+
 const roomId = (value) => String(value?._id || value || "");
 
-const orderPayload = (order, extra = {}) => ({
+const orderPayload = (order, extra = {}, role = "customer") => ({
   orderId: roomId(order),
   status: order?.status,
-  order,
+  order: sanitizeOrderForRole(order, role),
   ...extra,
 });
 
@@ -13,24 +15,19 @@ const getRiderId = (order) => roomId(order?.rider);
 
 const emitToOrderParticipants = (io, event, order, extra = {}) => {
   if (!io || !order?._id) return;
-  const payload = orderPayload(order, extra);
-  const rooms = [
-    `order:${roomId(order)}`,
-    getCustomerId(order) && `customer:${getCustomerId(order)}`,
-    getRestaurantId(order) && `restaurant:${getRestaurantId(order)}`,
-    getRiderId(order) && `rider:${getRiderId(order)}`,
-    "admin",
-  ].filter(Boolean);
-
-  rooms.forEach((room) => io.to(room).emit(event, payload));
-  io.to("admin").emit("admin:order-lifecycle", payload);
+  io.to(`order:${roomId(order)}`).emit(event, orderPayload(order, extra, "customer"));
+  if (getCustomerId(order)) io.to(`customer:${getCustomerId(order)}`).emit(event, orderPayload(order, extra, "customer"));
+  if (getRestaurantId(order)) io.to(`restaurant:${getRestaurantId(order)}`).emit(event, orderPayload(order, extra, "restaurant"));
+  if (getRiderId(order)) io.to(`rider:${getRiderId(order)}`).emit(event, orderPayload(order, extra, "rider"));
+  io.to("admin").emit(event, orderPayload(order, extra, "admin"));
+  io.to("admin").emit("admin:order-lifecycle", orderPayload(order, extra, "admin"));
 };
 
 const emitOrderRealtime = (req, event, order, extra = {}) => {
   const io = req?.app?.get("io");
   emitToOrderParticipants(io, event, order, extra);
   if (io && ["rider:new-ready-order", "rider:ready-order-removed"].includes(event)) {
-    io.to("riders:available").emit(event, orderPayload(order, extra));
+    io.to("riders:available").emit(event, orderPayload(order, extra, "rider"));
   }
 };
 

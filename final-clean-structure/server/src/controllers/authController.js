@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Rider = require("../models/Rider");
+const crypto = require("crypto");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { isPakistaniPhone, isNarowalAddress, resolveNarowalArea, clampLocation } = require("../constants/narowal");
 const { dbUnavailableResponse, isDbReady, logAuthError, normalizeAuthPhone } = require("../utils/authUtils");
@@ -36,14 +37,23 @@ exports.registerUser = async (req, res) => {
   try {
     if (!isDbReady()) return dbUnavailableResponse(res);
 
-    const { name, password, role } = req.body;
+    const { name, password } = req.body;
     const phone = normalizeAuthPhone(req.body.phone);
     const email = req.body.email?.trim().toLowerCase();
+    const requestedRole = String(req.body.role || "customer").trim().toLowerCase();
+    const allowedSelfServiceRoles = ["customer", "rider", "restaurant"];
 
     if (!name || !email || !password || !phone) {
       return errorResponse(res, "Name, email, phone, and password are required", 400);
     }
     if (password.length < 6) return errorResponse(res, "Password must be at least 6 characters.", 400);
+    if (![...allowedSelfServiceRoles, "admin"].includes(requestedRole)) return errorResponse(res, "Invalid registration role.", 400);
+    if (requestedRole === "admin") {
+      const expectedCode = process.env.ADMIN_REGISTRATION_CODE;
+      if (!expectedCode || req.body.adminSetupCode !== expectedCode) {
+        return errorResponse(res, "Admin registration is restricted.", 403);
+      }
+    }
     if (!isPakistaniPhone(phone)) return errorResponse(res, "Use Pakistani phone format +92XXXXXXXXXX", 400);
     if (req.body.address && !isNarowalAddress(req.body.address)) {
       return errorResponse(res, "Delivery address must be inside supported Narowal areas", 400);
@@ -57,7 +67,7 @@ exports.registerUser = async (req, res) => {
       email,
       password,
       phone,
-      role,
+      role: requestedRole,
       address: req.body.address || "",
       location: clampLocation(req.body.location),
       savedAddresses: req.body.address ? [{
@@ -141,7 +151,7 @@ exports.forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email }).select("+passwordResetToken +passwordResetExpires");
     if (user) {
-      const token = Math.random().toString(36).slice(2, 10).toUpperCase();
+      const token = String(crypto.randomInt(100000, 1000000));
       user.passwordResetToken = token;
       user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
       await user.save({ validateBeforeSave: false });

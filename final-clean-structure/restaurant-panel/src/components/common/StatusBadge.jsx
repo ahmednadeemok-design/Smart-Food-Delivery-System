@@ -5,6 +5,12 @@ const STATUS_CLASS = {
   active: "success",
   online: "success",
   open: "success",
+  closed: "danger",
+  complete: "success",
+  missing: "warning",
+  documents_missing: "warning",
+  submitted: "info",
+  verified: "success",
   delivered: "success",
   accepted: "success",
   rejected: "danger",
@@ -20,6 +26,15 @@ const STATUS_CLASS = {
   low: "success",
   hidden: "warning",
   available: "success",
+  posted: "success",
+  reserved: "info",
+  processing: "info",
+  completed: "success",
+  failed: "danger",
+  paid: "success",
+  adjusted: "warning",
+  collected: "warning",
+  reconciled: "success",
 };
 
 export default function StatusBadge({ value, children, className = "" }) {

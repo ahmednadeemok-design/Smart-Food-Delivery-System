@@ -34,9 +34,11 @@ const errorHandler = (err, req, res, next) => {
     error.statusCode = 503;
   }
 
-  console.error(`[error] ${req.method} ${req.originalUrl} ${error.statusCode || 500}: ${error.message}`);
+  const statusCode = error.statusCode || (res.statusCode && res.statusCode !== 200 ? res.statusCode : 500);
 
-  res.status(error.statusCode || 500).json({
+  console.error(`[error] ${req.method} ${req.originalUrl} ${statusCode}: ${error.message}`);
+
+  res.status(statusCode).json({
     success: false,
     message: error.message || "Server Error",
     data: {},

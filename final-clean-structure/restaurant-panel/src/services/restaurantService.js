@@ -5,6 +5,8 @@ export const getRestaurants = () => api.get("/restaurants");
 export const getMyRestaurants = () => api.get("/restaurants/my");
 export const getRestaurantDashboard = () => api.get("/restaurants/my/dashboard");
 export const getRestaurantReports = () => api.get("/restaurants/my/reports");
+export const getRestaurantFinance = () => api.get("/restaurants/my/finance");
+export const createRestaurantPayoutRequest = (payload) => api.post("/restaurants/my/payout-requests", payload);
 export const updateMyRestaurant = (payload) => api.patch("/restaurants/my", payload);
 export const updateRestaurantOpenStatus = (isOpen) => api.patch("/restaurants/my/open-status", { isOpen });
 export const updateBusinessHours = (payload) => api.patch("/restaurants/my/business-hours", payload);
@@ -27,3 +29,4 @@ export const deleteCampaign = (campaignId) => api.delete(`/restaurants/my/campai
 export const getSupportTickets = () => api.get("/restaurants/my/support-tickets");
 export const createSupportTicket = (payload) => api.post("/restaurants/my/support-tickets", payload);
 export const updateSupportTicket = (ticketId, payload) => api.patch(`/restaurants/my/support-tickets/${ticketId}`, payload);
+export const updateRestaurantAccount = (payload) => api.put("/users/profile", payload);

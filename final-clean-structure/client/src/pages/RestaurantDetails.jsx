@@ -9,6 +9,7 @@ import { addToCart, cartTotals, clearCart, getCart, getCartRestaurantId, removeF
 import { toast } from "../utils/toast.js";
 import SmartMap from "../components/map/SmartMap.jsx";
 import formatCurrency from "../utils/formatCurrency.js";
+import ContactActions from "../components/common/ContactActions.jsx";
 
 export default function RestaurantDetails() {
   const { id } = useParams();
@@ -94,6 +95,13 @@ export default function RestaurantDetails() {
               <p><b>Address:</b> {restaurant.address || "Not provided"}</p>
               <p><b>Rating:</b> {restaurant.rating || 0} ({restaurant.totalReviews || 0} reviews)</p>
               <p><b>Delivery Estimate:</b> {deliveryEstimate} minutes | <b>Estimated Fee:</b> Rs. {restaurant.deliveryFeeBase || 125} | <b>Payment:</b> COD available</p>
+              <ContactActions
+                title={restaurant.name}
+                subtitle="Restaurant contact"
+                phone={restaurant.supportContact || restaurant.phone}
+                location={restaurant.location}
+                address={restaurant.address}
+              />
               <SmartMap points={[{ label: restaurant.name, lat: restaurant.location?.lat || 32.1020, lng: restaurant.location?.lng || 74.8740 }]} />
             </div>
 

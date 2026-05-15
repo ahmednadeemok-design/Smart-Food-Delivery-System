@@ -17,6 +17,7 @@ export default function MenuManagement() {
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [restaurantForm, setRestaurantForm] = useState({
     name: "",
     description: "",
@@ -44,6 +45,7 @@ export default function MenuManagement() {
   });
 
   const loadRestaurants = async () => {
+    setLoading(true);
     const res = await getMyRestaurants();
     const owned = res.data.data || [];
     setRestaurants(owned);
@@ -55,10 +57,13 @@ export default function MenuManagement() {
     } else {
       setItems([]);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
-    loadRestaurants().catch((err) => toast.error(err.message));
+    loadRestaurants()
+      .catch((err) => toast.error(err.message))
+      .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -230,6 +235,8 @@ export default function MenuManagement() {
         </div>
 
         <div className="grid" style={{ marginTop: 18 }}>
+          {loading && <div className="card loading-card"><span className="badge">Loading</span><span>Loading menu and restaurant profile...</span></div>}
+          {!loading && selectedRestaurantId && items.length === 0 && <div className="empty-state"><h3>No menu items yet</h3><p>Add your first item so customers can start ordering.</p></div>}
           {items.map((item) => (
             <div className="card" key={item._id}>
               <StatusBadge value={item.isAvailable ? "Available" : "Hidden"} />

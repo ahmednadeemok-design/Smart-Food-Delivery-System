@@ -4,7 +4,7 @@ const { protect } = require("../middlewares/authMiddleware");
 const roleMiddleware = require("../middlewares/roleMiddleware");
 const { createPayment, getPayments, requestRefund } = require("../controllers/paymentController");
 
-router.post("/", protect, createPayment);
+router.post("/", protect, roleMiddleware("admin"), createPayment);
 router.post("/orders/:orderId/refund-request", protect, roleMiddleware("customer"), requestRefund);
 router.get("/", protect, roleMiddleware("admin"), getPayments);
 

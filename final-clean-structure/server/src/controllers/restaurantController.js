@@ -5,7 +5,9 @@ const Order = require("../models/Order");
 const Campaign = require("../models/Campaign");
 const SupportTicket = require("../models/SupportTicket");
 const { emitAdminRealtime, emitRestaurantRealtime } = require("../services/realtimeService");
+const { createPayoutRequest, getRestaurantFinance } = require("../services/financeService");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
+const { pickRestaurant, sanitizeOrderForRole, sanitizeOrdersForRole } = require("../services/contactPrivacyService");
 const { NAROWAL_AREAS, NAROWAL_CENTER, clampLocation, resolveNarowalArea } = require("../constants/narowal");
 const { fallbackMenu, fallbackRestaurants, getFallbackRestaurants } = require("../data/narowalFallbackData");
 const {
@@ -87,6 +89,9 @@ const calculateDashboard = async (restaurant) => {
 const restaurantPayload = (body) => {
   const localArea = body.localArea || resolveNarowalArea(body.address);
   const payload = { ...body };
+  if (body.cuisineTypes && !Array.isArray(body.cuisineTypes)) payload.cuisineTypes = String(body.cuisineTypes).split(",").map((item) => item.trim()).filter(Boolean);
+  if (body.deliveryRadiusKm !== undefined) payload.deliveryRadiusKm = Math.max(1, Math.min(25, Number(body.deliveryRadiusKm) || 5));
+  if (body.licenseImage || body.cnicFrontImage || body.cnicBackImage || body.kitchenImage || body.businessProof) payload.documentStatus = body.documentStatus || "submitted";
   if (localArea) payload.localArea = localArea;
   if (body.location) payload.location = clampLocation(body.location);
   if (body.businessHours) {
@@ -148,7 +153,7 @@ exports.getMyRestaurantOrders = async (req, res) => {
     Order.countDocuments(scopedQuery),
   ]);
   return successResponse(res, "Restaurant orders fetched successfully", {
-    orders,
+    orders: sanitizeOrdersForRole(orders, req),
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
     filters: { view, activeStatuses: ACTIVE_ORDER_STATUSES, historyStatuses: TERMINAL_ORDER_STATUSES },
   });
@@ -179,6 +184,7 @@ exports.getMyRestaurantDashboard = async (req, res) => {
     });
   }
   const dashboard = await calculateDashboard(restaurant);
+  dashboard.orders = sanitizeOrdersForRole(dashboard.orders, req);
   return successResponse(res, "Restaurant dashboard fetched", dashboard);
 };
 
@@ -209,7 +215,7 @@ exports.getMyRestaurantOrderById = async (req, res) => {
   const query = await orderQueryForOwner(req.user._id);
   const order = await Order.findOne({ ...query, _id: req.params.orderId }).populate(restaurantPopulate);
   if (!order) return errorResponse(res, "Order not found for your restaurant", 404);
-  return successResponse(res, "Restaurant order fetched", order);
+  return successResponse(res, "Restaurant order fetched", sanitizeOrderForRole(order, req));
 };
 
 exports.updateMyRestaurantOrderStatus = async (req, res) => {
@@ -246,6 +252,39 @@ exports.getMyRestaurantReports = async (req, res) => {
       popularItems: items.slice().sort((a, b) => Number(b.soldCount || 0) - Number(a.soldCount || 0)).slice(0, 8),
     },
   });
+};
+
+exports.getMyRestaurantFinance = async (req, res) => {
+  try {
+    const restaurant = await getOwnedRestaurant(req.user._id);
+    if (!restaurant) return errorResponse(res, "Restaurant profile not found", 404);
+    const finance = await getRestaurantFinance(restaurant);
+    return successResponse(res, "Restaurant finance fetched", finance);
+  } catch (error) {
+    return errorResponse(res, error.message || "Unable to load restaurant finance", 500);
+  }
+};
+
+exports.createMyRestaurantPayoutRequest = async (req, res) => {
+  try {
+    const restaurant = await getOwnedRestaurant(req.user._id);
+    if (!restaurant) return errorResponse(res, "Restaurant profile not found", 404);
+    if (!restaurant.bankAccountNumber && !restaurant.payoutAccountTitle) {
+      return errorResponse(res, "Add payout account details before requesting settlement", 400);
+    }
+    const payout = await createPayoutRequest({
+      requesterType: "restaurant",
+      restaurant,
+      user: req.user,
+      amount: req.body.amount,
+      notes: req.body.notes,
+    });
+    emitAdminRealtime(req, "admin:payout-requested", { payout });
+    emitRestaurantRealtime(req, "restaurant:finance-updated", restaurant, { payout });
+    return successResponse(res, "Restaurant settlement request submitted", payout, 201);
+  } catch (error) {
+    return errorResponse(res, error.message || "Unable to request settlement", 400);
+  }
 };
 
 exports.updateMyRestaurant = async (req, res) => {
@@ -293,7 +332,7 @@ exports.getRestaurants = async (req, res) => {
     });
   }
   const restaurants = await Restaurant.find(query).sort({ isFeatured: -1, rating: -1, createdAt: -1 });
-  return successResponse(res, "Restaurants fetched successfully", restaurants);
+  return successResponse(res, "Restaurants fetched successfully", restaurants.map((restaurant) => pickRestaurant(restaurant, { includePhone: true })));
 };
 
 exports.getRestaurantById = async (req, res) => {
@@ -304,7 +343,7 @@ exports.getRestaurantById = async (req, res) => {
   }
   const restaurant = await Restaurant.findById(req.params.id);
   if (!restaurant) return errorResponse(res, "Restaurant not found", 404);
-  return successResponse(res, "Restaurant fetched successfully", restaurant);
+  return successResponse(res, "Restaurant fetched successfully", pickRestaurant(restaurant, { includePhone: true }));
 };
 
 exports.addFoodItem = async (req, res) => {

@@ -6,11 +6,14 @@ import formatCurrency from "../utils/formatCurrency.js";
 import { toast } from "../utils/toast.js";
 import StatusBadge from "../components/common/StatusBadge.jsx";
 import socket from "../services/socket.js";
+import ActionModal from "../components/common/ActionModal.jsx";
 
 export default function Refunds() {
   const [payments, setPayments] = useState([]);
   const [orderTotal, setOrderTotal] = useState(2000);
   const [decision, setDecision] = useState("partial_refund");
+  const [refundDecision, setRefundDecision] = useState(null);
+  const [refundReason, setRefundReason] = useState("");
 
   const loadPayments = () => {
     getAdminPayments().then((res) => setPayments(res.data.data || [])).catch((err) => toast.error(err.message));
@@ -24,12 +27,14 @@ export default function Refunds() {
     return () => socket.off("admin:refund-updated", reload);
   }, []);
 
-  const decideRefund = async (payment, approved) => {
-    const reason = window.prompt("Refund reason", approved ? "Complaint approved by admin" : "Refund rejected by admin");
-    if (reason === null) return;
+  const decideRefund = async () => {
+    if (!refundDecision) return;
+    if (!refundReason.trim()) return toast.error("Refund reason is required.");
     try {
-      await refundAdminPayment(payment._id, { approved, reason });
-      toast.success(approved ? "Refund approved" : "Refund rejected");
+      await refundAdminPayment(refundDecision.payment._id, { approved: refundDecision.approved, reason: refundReason.trim() });
+      toast.success(refundDecision.approved ? "Refund approved" : "Refund rejected");
+      setRefundDecision(null);
+      setRefundReason("");
       loadPayments();
     } catch (err) {
       toast.error(err.message);
@@ -52,8 +57,8 @@ export default function Refunds() {
       label: "Actions",
       render: (row) => (
         <div className="action-row">
-          <button className="btn success" onClick={() => decideRefund(row, true)}>Approve Refund</button>
-          <button className="btn outline" onClick={() => decideRefund(row, false)}>Reject Refund</button>
+          <button className="btn success" onClick={() => { setRefundDecision({ payment: row, approved: true }); setRefundReason("Complaint approved by admin"); }}>Approve Refund</button>
+          <button className="btn outline" onClick={() => { setRefundDecision({ payment: row, approved: false }); setRefundReason("Refund rejected by admin"); }}>Reject Refund</button>
         </div>
       ),
     },
@@ -84,6 +89,20 @@ export default function Refunds() {
           </div>
         </div>
         <DataTable columns={columns} rows={payments} />
+        {refundDecision && (
+          <ActionModal
+            title={refundDecision.approved ? "Approve refund" : "Reject refund"}
+            message={`Payment ${formatCurrency(refundDecision.payment.amount || 0)} for order #${refundDecision.payment.order?._id?.slice(-6) || "unknown"}.`}
+            inputLabel="Decision reason"
+            inputPlaceholder="Add an operational reason"
+            value={refundReason}
+            onValueChange={setRefundReason}
+            confirmLabel={refundDecision.approved ? "Approve Refund" : "Reject Refund"}
+            danger={!refundDecision.approved}
+            onCancel={() => setRefundDecision(null)}
+            onConfirm={decideRefund}
+          />
+        )}
       </div>
     </section>
   );

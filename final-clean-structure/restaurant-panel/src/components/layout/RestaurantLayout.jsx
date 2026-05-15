@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { BarChart3, ClipboardList, Gauge, Headphones, LayoutDashboard, LogIn, LogOut, Megaphone, MenuSquare, ShieldCheck, UserPlus, Utensils } from "lucide-react";
+import { BarChart3, ClipboardList, Gauge, Headphones, Landmark, LayoutDashboard, LogIn, LogOut, Megaphone, MenuSquare, ShieldCheck, UserPlus, Utensils, UserRound } from "lucide-react";
 import { useAuth } from "../../store/AuthContext.jsx";
 import socket, { connectSocket, disconnectSocket } from "../../services/socket.js";
 
@@ -38,8 +38,10 @@ export default function RestaurantLayout() {
                 <NavLink to="/orders"><ClipboardList className="nav-icon" />Orders</NavLink>
                 <NavLink to="/menu"><MenuSquare className="nav-icon" />Menu</NavLink>
                 <NavLink to="/reports"><BarChart3 className="nav-icon" />Reports</NavLink>
+                <NavLink to="/finance"><Landmark className="nav-icon" />Finance</NavLink>
                 <NavLink to="/campaigns"><Megaphone className="nav-icon" />Campaigns</NavLink>
                 <NavLink to="/support"><Headphones className="nav-icon" />Support</NavLink>
+                <NavLink to="/profile"><UserRound className="nav-icon" />Profile</NavLink>
                 <NavLink to="/kitchen-load"><Gauge className="nav-icon" />Kitchen</NavLink>
                 <NavLink to="/accuracy-reports"><ShieldCheck className="nav-icon" />Accuracy</NavLink>
                 <NavLink to="/quality-audit"><Utensils className="nav-icon" />Quality</NavLink>

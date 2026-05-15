@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DataTable from "../components/admin/DataTable.jsx";
 import { getAdminOrders, getAdminRiders, permanentlyDeleteAdminOrder, restoreAdminOrder, trashAdminOrder, updateAdminOrder } from "../services/adminService.js";
 import { toast } from "../utils/toast.js";
 import formatCurrency from "../utils/formatCurrency.js";
 import StatusBadge from "../components/common/StatusBadge.jsx";
+import ContactActions from "../components/common/ContactActions.jsx";
+import PortalActionMenu from "../components/common/PortalActionMenu.jsx";
 import socket from "../services/socket.js";
 
 export default function Orders() {
@@ -17,6 +19,7 @@ export default function Orders() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [confirmAction, setConfirmAction] = useState(null);
+  const queuedContactRefresh = useRef(false);
 
   const loadOrders = () => {
     getAdminOrders({ view, status, q: query, from, to, page, limit: 25 })
@@ -32,17 +35,29 @@ export default function Orders() {
     loadOrders();
     const reload = (payload) => {
       if (payload?.status) toast.success(`Live order update: ${payload.status}`);
+      if (window.__SMARTFOOD_CONTACT_MODAL_OPEN) {
+        queuedContactRefresh.current = true;
+        return;
+      }
       loadOrders();
+    };
+    const flushQueuedRefresh = (event) => {
+      if (!event.detail?.open && queuedContactRefresh.current) {
+        queuedContactRefresh.current = false;
+        loadOrders();
+      }
     };
     socket.emit("join-role-rooms");
     socket.on("order-created", reload);
     socket.on("order-status-updated", reload);
     socket.on("admin:order-lifecycle", reload);
+    window.addEventListener("smartfood:contact-modal-state", flushQueuedRefresh);
     getAdminRiders().then((res) => setRiders(res.data.data || [])).catch(() => {});
     return () => {
       socket.off("order-created", reload);
       socket.off("order-status-updated", reload);
       socket.off("admin:order-lifecycle", reload);
+      window.removeEventListener("smartfood:contact-modal-state", flushQueuedRefresh);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, view, page, query, from, to]);
@@ -83,20 +98,13 @@ export default function Orders() {
     }
     if (!actions.length) return null;
     return (
-      <details className="more-actions">
-        <summary aria-label="More actions">⋮ More Actions</summary>
-        <div className="more-actions-menu">
-          {actions.map((action) => (
-            <button
-              key={action.type}
-              className={action.type === "permanent" || action.type === "trash" ? "danger-text" : ""}
-              onClick={() => setConfirmAction({ ...action, order: row })}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-      </details>
+      <PortalActionMenu
+        actions={actions.map((action) => ({
+          label: action.label,
+          danger: action.type === "permanent" || action.type === "trash",
+          onClick: () => setConfirmAction({ ...action, order: row }),
+        }))}
+      />
     );
   };
 
@@ -105,6 +113,17 @@ export default function Orders() {
     { key: "customer", label: "Customer", render: (row) => <div className="cell-main"><span className="cell-title">{row.customer?.name || "Customer"}</span><span className="cell-sub">{row.deliveryAddress || "Delivery address unavailable"}</span></div> },
     { key: "restaurant", label: "Restaurant", render: (row) => <div className="cell-main"><span className="cell-title">{row.restaurant?.name || "Restaurant"}</span><span className="cell-sub">{String(row.paymentMethod || "cod").toUpperCase()} / {row.paymentStatus || "pending"}</span></div> },
     { key: "rider", label: "Rider", render: (row) => row.rider?.user?.name ? <StatusBadge value={row.rider.user.name} /> : <StatusBadge value="Unassigned" /> },
+    {
+      key: "contacts",
+      label: "Contacts",
+      render: (row) => (
+        <div className="contact-grid">
+          <ContactActions compact title={row.customer?.name || "Customer"} subtitle="Customer" phone={row.customer?.phone} location={row.deliveryLocation} address={row.deliveryAddress} />
+          <ContactActions compact title={row.restaurant?.name || "Restaurant"} subtitle="Restaurant" phone={row.restaurant?.supportContact || row.restaurant?.phone} location={row.restaurant?.location} address={row.restaurant?.address} />
+          {row.rider?.user && <ContactActions compact title={row.rider.user.name || "Rider"} subtitle="Rider" phone={row.rider.user.phone} location={row.rider?.currentLocation} />}
+        </div>
+      ),
+    },
     { key: "status", label: "Status", render: (row) => <StatusBadge value={row.status} /> },
     { key: "totalAmount", label: "Total", render: (row) => formatCurrency(row.totalAmount) },
     {

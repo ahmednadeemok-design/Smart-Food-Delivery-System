@@ -36,9 +36,9 @@ exports.getSystemHealth = async (req, res) => {
     Subscription.countDocuments(),
     Complaint.countDocuments({ status: { $in: ["open", "reviewing"] } }),
     Rider.countDocuments({ isOnline: true }),
-    Payment.aggregate([{ $match: { status: { $in: ["paid", "pending"] } } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
-    Order.countDocuments({ status: { $in: ["pending", "accepted", "preparing", "ready", "picked"] } }),
-    Restaurant.countDocuments({ approvalStatus: "pending" }),
+    Payment.aggregate([{ $match: { status: { $in: ["cash_collected", "paid_online", "settled_to_restaurant"] } } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
+    Order.countDocuments({ status: { $in: ["pending", "accepted", "preparing", "ready", "assigned", "picked", "on-the-way"] } }),
+    Restaurant.countDocuments({ approvalStatus: { $in: ["pending", "pending_review"] } }),
     Rider.countDocuments({ approvalStatus: "pending" }),
   ]);
 

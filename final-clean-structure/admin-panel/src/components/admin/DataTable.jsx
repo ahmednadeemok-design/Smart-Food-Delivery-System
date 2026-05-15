@@ -1,6 +1,6 @@
 export default function DataTable({ columns, rows }) {
   return (
-    <div className="card">
+    <div className="card data-table-card">
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -11,8 +11,11 @@ export default function DataTable({ columns, rows }) {
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={columns.length} style={{ color: "var(--muted)", padding: 18, textAlign: "center" }}>
-                  No records found.
+                <td colSpan={columns.length}>
+                  <div className="empty-state table-empty">
+                    <h3>No records found</h3>
+                    <p>Try changing filters or refreshing the operational view.</p>
+                  </div>
                 </td>
               </tr>
             )}

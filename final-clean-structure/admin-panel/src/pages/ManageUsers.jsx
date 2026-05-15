@@ -3,9 +3,12 @@ import DataTable from "../components/admin/DataTable.jsx";
 import { deleteAdminUser, getAdminUsers, issuePasswordReset, updateAdminUser } from "../services/adminService.js";
 import { toast } from "../utils/toast.js";
 import StatusBadge from "../components/common/StatusBadge.jsx";
+import ContactActions from "../components/common/ContactActions.jsx";
+import ActionModal from "../components/common/ActionModal.jsx";
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const loadUsers = () => {
     getAdminUsers().then((res) => {
@@ -25,11 +28,12 @@ export default function ManageUsers() {
     }
   };
 
-  const removeUser = async (id) => {
-    if (!window.confirm("Delete this user and related profile data?")) return;
+  const removeUser = async () => {
+    if (!deleteConfirm) return;
     try {
-      await deleteAdminUser(id);
+      await deleteAdminUser(deleteConfirm._id);
       toast.success("User deleted");
+      setDeleteConfirm(null);
       loadUsers();
     } catch (err) {
       toast.error(err.message);
@@ -48,6 +52,7 @@ export default function ManageUsers() {
   const columns = [
     { key: "name", label: "Name", render: (row) => <div className="cell-main"><span className="cell-title">{row.name}</span><span className="cell-sub">{row.phone || "No phone"}</span></div> },
     { key: "email", label: "Email", render: (row) => <span className="cell-sub">{row.email}</span> },
+    { key: "contact", label: "Contact", render: (row) => <ContactActions compact title={row.name} subtitle={row.email} phone={row.phone} location={row.location} address={row.address} /> },
     {
       key: "role",
       label: "Role",
@@ -68,7 +73,7 @@ export default function ManageUsers() {
             {row.isBlocked ? "Unblock" : "Block"}
           </button>
           <button className="btn outline" onClick={() => resetPassword(row)}>Reset Password</button>
-          <button className="btn danger" onClick={() => removeUser(row._id)}>Delete</button>
+          <button className="btn danger" onClick={() => setDeleteConfirm(row)}>Delete</button>
         </div>
       ),
     },
@@ -80,6 +85,16 @@ export default function ManageUsers() {
         <h1>Manage Users</h1>
         <p className="muted">View, block, unblock, delete, change roles, and review trust scores.</p>
         <DataTable columns={columns} rows={users} />
+        {deleteConfirm && (
+          <ActionModal
+            title="Delete user?"
+            message={`This will remove ${deleteConfirm.name} and related rider/restaurant profile data.`}
+            danger
+            confirmLabel="Delete User"
+            onCancel={() => setDeleteConfirm(null)}
+            onConfirm={removeUser}
+          />
+        )}
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Activity, BarChart3, Bike, ClipboardList, Gauge, LayoutDashboard, LogIn, LogOut, ReceiptText, ShieldCheck, Store, UserCog, UserPlus, Users } from "lucide-react";
+import { Activity, BarChart3, Bike, ClipboardList, Gauge, Landmark, LayoutDashboard, LogIn, LogOut, ReceiptText, ShieldCheck, Store, UserCog, UserPlus, Users } from "lucide-react";
 import { useAuth } from "../../store/AuthContext.jsx";
 import socket, { connectSocket, disconnectSocket } from "../../services/socket.js";
 
@@ -41,6 +41,7 @@ export default function AdminLayout() {
                 <NavLink to="/orders"><ReceiptText className="nav-icon" />Orders</NavLink>
                 <NavLink to="/complaints"><ClipboardList className="nav-icon" />Complaints</NavLink>
                 <NavLink to="/refunds"><UserCog className="nav-icon" />Refunds</NavLink>
+                <NavLink to="/finance"><Landmark className="nav-icon" />Finance</NavLink>
                 <NavLink to="/trust-scores"><ShieldCheck className="nav-icon" />Trust</NavLink>
                 <NavLink to="/analytics"><BarChart3 className="nav-icon" />Analytics</NavLink>
                 <NavLink to="/system-health"><Activity className="nav-icon" />Health</NavLink>

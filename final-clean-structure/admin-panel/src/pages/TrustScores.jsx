@@ -2,12 +2,16 @@ import { useEffect, useState } from "react";
 import TrustScoreCard from "../components/admin/TrustScoreCard.jsx";
 import { adjustTrustScore, getAdminRestaurants, getAdminRiders, getAdminUsers, getTrustHistory } from "../services/adminService.js";
 import { toast } from "../utils/toast.js";
+import ActionModal from "../components/common/ActionModal.jsx";
 
 export default function TrustScores() {
   const [users, setUsers] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [riders, setRiders] = useState([]);
   const [history, setHistory] = useState([]);
+  const [trustChange, setTrustChange] = useState(null);
+  const [changeValue, setChangeValue] = useState("-5");
+  const [reason, setReason] = useState("Manual admin trust control");
 
   const load = async () => {
     try {
@@ -30,16 +34,15 @@ export default function TrustScores() {
     load();
   }, []);
 
-  const changeScore = async (actorType, actorId, name) => {
-    const rawChange = window.prompt(`Trust score change for ${name}. Use negative numbers for penalty.`, "-5");
-    if (rawChange === null) return;
-    const change = Number(rawChange);
+  const changeScore = async () => {
+    if (!trustChange) return;
+    const change = Number(changeValue);
     if (!Number.isFinite(change)) return toast.error("Enter a valid trust score change number.");
-    const reason = window.prompt("Reason for trust score change", "Manual admin trust control");
-    if (reason === null) return;
+    if (!reason.trim()) return toast.error("Reason is required.");
     try {
-      await adjustTrustScore({ actorType, actorId, change, reason });
+      await adjustTrustScore({ actorType: trustChange.type, actorId: trustChange.id, change, reason: reason.trim() });
       toast.success("Trust score updated");
+      setTrustChange(null);
       load();
     } catch (err) {
       toast.error(err.message);
@@ -61,7 +64,7 @@ export default function TrustScores() {
           {combined.map((item) => (
             <div className="card" key={`${item.type}-${item.id}`}>
               <TrustScoreCard name={item.name} type={item.type} score={item.score} />
-              <button className="btn outline" onClick={() => changeScore(item.type, item.id, item.name)}>Adjust Score</button>
+              <button className="btn outline" onClick={() => { setTrustChange(item); setChangeValue("-5"); setReason("Manual admin trust control"); }}>Adjust Score</button>
             </div>
           ))}
         </div>
@@ -74,6 +77,24 @@ export default function TrustScores() {
           ))}
           {history.length === 0 && <p className="muted">No trust score changes yet.</p>}
         </div>
+        {trustChange && (
+          <ActionModal
+            title="Adjust trust score"
+            message={`Apply a trust score change for ${trustChange.name}. Use negative values for penalties.`}
+            inputType="number"
+            inputLabel="Score change"
+            inputPlaceholder="-5"
+            value={changeValue}
+            onValueChange={setChangeValue}
+            secondaryLabel="Reason"
+            secondaryPlaceholder="Explain the operational reason"
+            secondaryValue={reason}
+            onSecondaryValueChange={setReason}
+            confirmLabel="Apply Change"
+            onCancel={() => setTrustChange(null)}
+            onConfirm={changeScore}
+          />
+        )}
       </div>
     </section>
   );

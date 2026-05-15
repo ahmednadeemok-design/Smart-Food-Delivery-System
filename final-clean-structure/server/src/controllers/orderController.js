@@ -6,11 +6,12 @@ const Payment = require("../models/Payment");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const { createDeliveryOTP, verifyOTP } = require("../services/otpService");
 const { getDeliveryCostBreakdown } = require("../services/deliveryCostService");
-const { calculateOrderFinancials, settleCodDelivery } = require("../services/financeService");
+const { calculateOrderFinancials, recordOrderReserved, settleCodDelivery } = require("../services/financeService");
 const { calculateCouponDiscount, clampLocation, isNarowalAddress } = require("../constants/narowal");
 const { sendOrderUpdate } = require("../utils/emailService");
 const { createNotification, notifyOrderParticipants } = require("../services/notificationService");
 const { emitOrderRealtime, emitRiderRealtime } = require("../services/realtimeService");
+const { sanitizeOrderForRole, sanitizeOrdersForRole } = require("../services/contactPrivacyService");
 const {
   ACTIVE_ORDER_STATUSES,
   TERMINAL_ORDER_STATUSES,
@@ -129,7 +130,7 @@ exports.createOrder = async (req, res) => {
     order.deliveryOtp = order.otp;
     await order.save({ validateBeforeSave: false });
 
-    await Payment.create({
+    const payment = await Payment.create({
       order: order._id,
       user: req.user._id,
       amount: totalAmount,
@@ -146,6 +147,7 @@ exports.createOrder = async (req, res) => {
       restaurantRevenue: financials.restaurantRevenue,
       riderEarning: financials.riderEarning,
     });
+    await recordOrderReserved(order, payment);
 
     req.user.loyalty = req.user.loyalty || {};
     req.user.loyalty.points = Math.max(0, Number(req.user.loyalty.points || 0) - loyaltyPointsRedeemed + loyaltyPointsEarned);
@@ -171,7 +173,7 @@ exports.createOrder = async (req, res) => {
         : null,
     ]);
 
-    return successResponse(res, "Order created successfully", order, 201);
+    return successResponse(res, "Order created successfully", sanitizeOrderForRole(populatedOrder, req), 201);
   } catch (error) {
     return errorResponse(res, error.message, 500);
   }
@@ -212,7 +214,7 @@ exports.getMyOrders = async (req, res) => {
     Order.countDocuments(scopedQuery),
   ]);
   return successResponse(res, "Orders fetched successfully", {
-    orders,
+    orders: sanitizeOrdersForRole(orders, req),
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
     filters: { view, activeStatuses: ACTIVE_ORDER_STATUSES, historyStatuses: TERMINAL_ORDER_STATUSES },
   });
@@ -250,7 +252,7 @@ exports.getOrderById = async (req, res) => {
     }
   }
 
-  return successResponse(res, "Order fetched successfully", order);
+  return successResponse(res, "Order fetched successfully", sanitizeOrderForRole(order, req));
 };
 
 exports.cancelMyOrder = async (req, res) => {
@@ -274,7 +276,7 @@ exports.cancelMyOrder = async (req, res) => {
   emitOrderUpdate(req, populatedOrder);
   emitOrderRealtime(req, "restaurant:order-cancelled", populatedOrder);
 
-  return successResponse(res, "Order cancelled successfully", order);
+  return successResponse(res, "Order cancelled successfully", sanitizeOrderForRole(populatedOrder, req));
 };
 
 exports.updateOrderStatus = async (req, res) => {
@@ -331,7 +333,7 @@ exports.updateOrderStatus = async (req, res) => {
   if (req.body.status === "picked") emitOrderRealtime(req, "customer:otp-visible", populated);
   await sendOrderUpdate(populated, `Order ${order.status}`, `Your SmartFood Narowal order is now ${order.status}.`);
   await notifyOrderParticipants(populated, `Order ${order.status}`, `Your SmartFood Narowal order is now ${order.status}.`);
-  return successResponse(res, "Order status updated", order);
+  return successResponse(res, "Order status updated", sanitizeOrderForRole(populated, req));
 };
 
 exports.getAvailableOrders = async (req, res) => {
@@ -342,9 +344,13 @@ exports.getAvailableOrders = async (req, res) => {
     isDeleted: { $ne: true },
     ...(rider ? { rejectedByRiders: { $ne: rider._id } } : {}),
     $or: [{ rider: { $exists: false } }, { rider: null }],
-  }).populate("restaurant customer", "name address location phone").sort({ emergencyMode: -1, createdAt: 1 }).limit(50);
+  })
+    .populate("restaurant", "name address location phone localArea")
+    .populate("customer", "name")
+    .sort({ emergencyMode: -1, createdAt: 1 })
+    .limit(50);
 
-  return successResponse(res, "Available orders fetched successfully", orders);
+  return successResponse(res, "Available orders fetched successfully", sanitizeOrdersForRole(orders, req));
 };
 
 exports.acceptOrder = async (req, res) => {
@@ -364,7 +370,9 @@ exports.acceptOrder = async (req, res) => {
       $push: { statusTimeline: { status: "assigned", label: "Delivery assigned to rider", at: new Date() } },
     },
     { new: true }
-  ).populate("restaurant customer", "name address location phone");
+  )
+    .populate("restaurant", "name address location phone localArea")
+    .populate("customer", "name phone email");
 
   if (!order) return errorResponse(res, "Order is not available", 400);
 
@@ -390,7 +398,7 @@ exports.acceptOrder = async (req, res) => {
     "Rider assigned",
     "A rider has accepted this SmartFood Narowal delivery."
   );
-  return successResponse(res, "Order accepted successfully", order);
+  return successResponse(res, "Order accepted successfully", sanitizeOrderForRole(order, req));
 };
 
 exports.verifyDelivery = async (req, res) => {
@@ -432,7 +440,7 @@ exports.verifyDelivery = async (req, res) => {
     "SmartFood Narowal delivery completed with OTP verification."
   );
 
-  return successResponse(res, "Delivery verified successfully", order);
+  return successResponse(res, "Delivery verified successfully", sanitizeOrderForRole(populatedOrder, req));
 };
 
 exports.rejectOrder = async (req, res) => {

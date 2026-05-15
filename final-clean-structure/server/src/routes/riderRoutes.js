@@ -2,7 +2,19 @@ const express = require("express");
 const router = express.Router();
 const { protect } = require("../middlewares/authMiddleware");
 const roleMiddleware = require("../middlewares/roleMiddleware");
-const { createRiderProfile, updateRiderProfile, updateLocation, updateAvailability, getRiders, getMyRiderProfile, getActiveOrder, getRiderHistory, getRiderEarnings } = require("../controllers/riderController");
+const {
+  createRiderProfile,
+  updateRiderProfile,
+  updateLocation,
+  updateAvailability,
+  getRiders,
+  getMyRiderProfile,
+  getActiveOrder,
+  getRiderHistory,
+  getRiderEarnings,
+  getMyRiderFinance,
+  createMyRiderPayoutRequest,
+} = require("../controllers/riderController");
 const { getAvailableOrders, acceptOrder, updateOrderStatus, verifyDelivery, rejectOrder, markPicked } = require("../controllers/orderController");
 
 router.get("/me", protect, roleMiddleware("rider"), getMyRiderProfile);
@@ -19,6 +31,8 @@ router.post("/orders/:orderId/verify-otp", protect, roleMiddleware("rider"), ver
 router.get("/active-order", protect, roleMiddleware("rider"), getActiveOrder);
 router.get("/history", protect, roleMiddleware("rider"), getRiderHistory);
 router.get("/earnings", protect, roleMiddleware("rider"), getRiderEarnings);
+router.get("/finance", protect, roleMiddleware("rider"), getMyRiderFinance);
+router.post("/payout-requests", protect, roleMiddleware("rider"), createMyRiderPayoutRequest);
 router.get("/", protect, roleMiddleware("admin"), getRiders);
 
 module.exports = router;

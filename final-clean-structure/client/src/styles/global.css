@@ -14,6 +14,8 @@
 
 * { box-sizing: border-box; }
 
+.more-actions-trigger{background:#fff;border:1px solid #f3d7ca;border-radius:999px;color:var(--primary-dark);cursor:pointer;font-weight:900;list-style:none;min-height:42px;padding:9px 12px;white-space:nowrap}.portal-menu-layer{background:transparent;inset:0;position:fixed;z-index:4500}.portal-action-menu{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-md);display:grid;max-height:min(320px,calc(100vh - 24px));max-width:calc(100vw - 24px);overflow:auto;padding:6px;position:fixed}.portal-action-menu button{background:transparent;border:0;border-radius:10px;color:var(--text);cursor:pointer;font-weight:850;padding:10px 12px;text-align:left}.portal-action-menu button:hover,.portal-action-menu button:focus-visible{background:#fff4ed}.portal-action-menu .danger-text{color:var(--danger)}@media(max-width:560px){.more-actions-trigger{width:100%;white-space:normal}.portal-action-menu{width:calc(100vw - 24px)!important}}
+
 html,
 body,
 #root {
@@ -1814,5 +1816,326 @@ textarea:focus {
   .sticky-cart-summary .summary-btn,
   .order-summary-card .summary-btn {
     position: static;
+  }
+}
+.contact-actions {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface, #fff);
+  display: grid;
+  gap: 10px;
+}
+
+.contact-actions.compact {
+  padding: 10px;
+}
+
+.contact-actions-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.contact-actions-head div {
+  display: grid;
+  gap: 2px;
+}
+
+.contact-actions-head span,
+.contact-actions-head small {
+  color: var(--muted, #6b7280);
+  font-size: 0.85rem;
+}
+
+.contact-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e5e7eb);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: var(--text, #111827);
+  cursor: pointer;
+}
+
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.contact-open-btn,
+.contact-modal-actions .btn {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.contact-open-btn {
+  width: fit-content;
+}
+
+.contact-open-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.modal-card.contact-modal {
+  display: grid;
+  gap: 16px;
+  max-width: min(520px, 100%);
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+}
+
+.contact-modal-title {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  padding-right: 44px;
+}
+
+.contact-modal-title h3,
+.contact-modal-title p,
+.contact-hint {
+  margin: 0;
+}
+
+.contact-modal-details {
+  display: grid;
+  gap: 10px;
+}
+
+.contact-modal-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contact-modal-actions .btn {
+  min-height: 48px;
+  width: 100%;
+}
+
+.contact-action-primary {
+  box-shadow: 0 14px 30px rgba(15, 118, 110, 0.2);
+}
+
+.contact-dialer-link {
+  opacity: 0.86;
+}
+
+@media(max-width:520px){
+  .contact-grid,
+  .contact-modal-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-open-btn {
+    width: 100%;
+  }
+}
+
+/* Production UX hardening */
+:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.26);
+  outline-offset: 3px;
+}
+
+.card,
+.detail-tile,
+.empty-state,
+.order-summary-card,
+.sticky-cart-summary {
+  min-width: 0;
+}
+
+.btn {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.btn:disabled,
+button:disabled,
+select:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.form-field {
+  display: grid;
+  gap: 7px;
+  font-weight: 850;
+}
+
+.action-modal {
+  display: grid;
+  gap: 14px;
+}
+
+.action-modal h3,
+.action-modal p {
+  margin: 0;
+}
+
+.modal-actions {
+  justify-content: flex-end;
+}
+
+.loading-card {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto 1fr;
+}
+
+.skeleton-lines {
+  display: grid;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+
+.skeleton-lines i {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+  background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f8fafc);
+  border-radius: 999px;
+  display: block;
+  height: 10px;
+}
+
+.skeleton-lines i:last-child {
+  width: 68%;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.52; }
+  50% { opacity: 1; }
+}
+
+.restaurant-card,
+.food-card,
+.tracking-card,
+.cart-item {
+  overflow: hidden;
+}
+
+.restaurant-card img,
+.food-card img {
+  background: #f8fafc;
+}
+
+.restaurant-card h3,
+.food-card h3,
+.detail-tile b,
+.summary-row b {
+  overflow-wrap: anywhere;
+}
+
+.filter-panel {
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.sticky-cart-summary,
+.order-summary-card {
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-backdrop {
+  backdrop-filter: blur(4px);
+}
+
+.contact-modal-backdrop {
+  align-items: center;
+  animation: contact-backdrop-in .16s ease both;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 16px;
+  position: fixed;
+  z-index: 5000;
+}
+
+.modal-card.contact-modal {
+  animation: contact-modal-in .18s ease both;
+  box-sizing: border-box;
+  max-height: calc(100vh - 32px);
+  max-width: 520px;
+  overflow: auto;
+  transform: none;
+  width: calc(100% - 32px);
+}
+
+@keyframes contact-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes contact-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.contact-modal,
+.contact-modal * {
+  min-width: 0;
+}
+
+.contact-modal-actions {
+  overflow: hidden;
+}
+
+.contact-modal-actions .btn {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media(max-width:860px){
+  .filter-panel,
+  .sticky-cart-summary,
+  .order-summary-card {
+    max-height: none;
+    overflow: visible;
+    position: static;
+  }
+
+  .action-row {
+    align-items: stretch;
+  }
+
+  .action-row .btn,
+  .action-row select,
+  .modal-actions .btn {
+    width: 100%;
   }
 }

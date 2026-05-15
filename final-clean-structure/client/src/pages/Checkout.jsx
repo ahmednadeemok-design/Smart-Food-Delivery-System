@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createOrder } from "../services/orderService.js";
 import { clearCart, getCart, cartTotals } from "../store/cartStore.js";
@@ -31,6 +31,25 @@ const ADDRESS_LOCATIONS = {
   "DHQ Hospital area, Narowal": { lat: 32.1058, lng: 74.8792 },
 };
 
+const COUPONS = {
+  NAROWAL50: { type: "flat", value: 50, minSubtotal: 350 },
+  UET100: { type: "flat", value: 100, minSubtotal: 800, area: "UET Narowal Campus" },
+  BAZAAR10: { type: "percent", value: 10, maxDiscount: 180, minSubtotal: 600 },
+};
+
+const resolveArea = (address = "") => NAROWAL_ADDRESSES.find((item) => address.toLowerCase().includes(item.split(",")[0].toLowerCase())) || "";
+
+const couponPreview = ({ code, subtotal, deliveryAddress }) => {
+  const normalized = String(code || "").trim().toUpperCase();
+  if (!normalized) return { code: "", discount: 0, message: "No coupon applied" };
+  const coupon = COUPONS[normalized];
+  if (!coupon) return { code: normalized, discount: 0, message: "Coupon will be validated at checkout" };
+  if (subtotal < coupon.minSubtotal) return { code: normalized, discount: 0, message: `Minimum subtotal is ${formatCurrency(coupon.minSubtotal)}` };
+  if (coupon.area && !resolveArea(deliveryAddress).includes(coupon.area)) return { code: normalized, discount: 0, message: `${normalized} is only for ${coupon.area}` };
+  const raw = coupon.type === "percent" ? Math.round((subtotal * coupon.value) / 100) : coupon.value;
+  return { code: normalized, discount: Math.min(raw, coupon.maxDiscount || raw, subtotal), message: "Coupon applied" };
+};
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
@@ -44,6 +63,20 @@ export default function Checkout() {
     emergencyMode: false,
     deliveryLocation: ADDRESS_LOCATIONS[localStorage.getItem(SAVED_ADDRESS_KEY)] || { lat: 32.1020, lng: 74.8740 },
   });
+  const feePreview = useMemo(() => {
+    const coupon = couponPreview({ code: form.couponCode, subtotal: totals.subtotal, deliveryAddress: form.deliveryAddress });
+    const points = Math.min(Number(form.loyaltyPointsRedeemed || 0), user?.loyalty?.points || 0, Math.floor(totals.subtotal * 0.15));
+    const discountAmount = Math.min(totals.subtotal, coupon.discount + points);
+    return {
+      ...totals,
+      couponDiscount: coupon.discount,
+      loyaltyDiscount: points,
+      discountAmount,
+      taxAmount: 0,
+      total: Math.max(0, totals.subtotal + totals.deliveryFee + totals.platformFee + totals.serviceFee - discountAmount),
+      couponMessage: coupon.message,
+    };
+  }, [form.couponCode, form.deliveryAddress, form.loyaltyPointsRedeemed, totals, user?.loyalty?.points]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -84,7 +117,7 @@ export default function Checkout() {
         <form className="card form checkout-card" onSubmit={submit}>
           <span className="badge">Secure COD checkout</span>
           <h1>Checkout</h1>
-          <p className="muted">Choose a Narowal delivery point, confirm COD, and place your order.</p>
+          <p className="muted">Choose a Narowal delivery point, review all fees, confirm COD, and place your order.</p>
           {user?.savedAddresses?.length > 0 && (
             <select value={form.deliveryAddress} onChange={(e) => {
               const picked = user.savedAddresses.find((item) => item.address === e.target.value);
@@ -110,6 +143,7 @@ export default function Checkout() {
             <option value="card" disabled>Card (coming soon)</option>
           </select>
           <input className="input" placeholder="Coupon code: NAROWAL50, UET100, BAZAAR10" value={form.couponCode} onChange={(e) => setForm({ ...form, couponCode: e.target.value.toUpperCase() })} />
+          <p className="muted">{feePreview.couponMessage}</p>
           <input className="input" type="number" min="0" max={user?.loyalty?.points || 0} placeholder={`Redeem points (${user?.loyalty?.points || 0} available)`} value={form.loyaltyPointsRedeemed} onChange={(e) => setForm({ ...form, loyaltyPointsRedeemed: e.target.value })} />
           <label>
             <input type="checkbox" checked={form.emergencyMode} onChange={(e) => setForm({ ...form, emergencyMode: e.target.checked })} />
@@ -119,15 +153,18 @@ export default function Checkout() {
         </form>
         <aside className="order-summary-card">
           <h3>Payment Summary</h3>
-          <div className="summary-row"><span>Subtotal</span><b>{formatCurrency(totals.subtotal)}</b></div>
-          <div className="summary-row"><span>Delivery estimate</span><b>{formatCurrency(totals.deliveryFee)}</b></div>
-          <div className="summary-row"><span>Platform fee</span><b>{formatCurrency(totals.platformFee)}</b></div>
-          <div className="summary-row"><span>Service fee</span><b>{formatCurrency(totals.serviceFee)}</b></div>
-          <div className="summary-row"><span>Discount / points</span><b>{formatCurrency(Number(form.loyaltyPointsRedeemed || 0))}</b></div>
-          <div className="summary-row"><span>Tax</span><b>{formatCurrency(0)}</b></div>
-          <div className="summary-row total"><span>Total estimate</span><b>{formatCurrency(totals.total)}</b></div>
-          <p className="muted">Payment method: Cash on Delivery</p>
+          <div className="summary-row"><span>Subtotal</span><b>{formatCurrency(feePreview.subtotal)}</b></div>
+          <div className="summary-row"><span>Delivery fee</span><b>{formatCurrency(feePreview.deliveryFee)}</b></div>
+          <p className="muted finance-note">Delivery fee covers Narowal rider dispatch and distance handling.</p>
+          <div className="summary-row"><span>Platform fee</span><b>{formatCurrency(feePreview.platformFee)}</b></div>
+          <div className="summary-row"><span>Service fee</span><b>{formatCurrency(feePreview.serviceFee)}</b></div>
+          <div className="summary-row"><span>Coupon discount</span><b>-{formatCurrency(feePreview.couponDiscount)}</b></div>
+          <div className="summary-row"><span>Loyalty points</span><b>-{formatCurrency(feePreview.loyaltyDiscount)}</b></div>
+          <div className="summary-row"><span>Tax</span><b>{formatCurrency(feePreview.taxAmount)}</b></div>
+          <div className="summary-row total"><span>Total COD due</span><b>{formatCurrency(feePreview.total)}</b></div>
+          <p className="muted">Payment method: {form.paymentMethod === "cod" ? "Cash on Delivery" : "Online payment readiness"}</p>
           <p className="muted">Loyalty: {user?.loyalty?.points || 0} points available</p>
+          <p className="muted">Refunds and adjustments appear in order tracking after admin review.</p>
         </aside>
       </div>
     </section>

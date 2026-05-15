@@ -17,8 +17,9 @@ const parseOrigins = (value) => {
     .filter(Boolean);
 };
 
+const configuredOrigins = [...parseOrigins(process.env.CLIENT_URL), ...parseOrigins(process.env.CORS_ORIGINS)];
 const allowedOrigins = [
-  ...new Set([...defaultOrigins, ...parseOrigins(process.env.CLIENT_URL), ...parseOrigins(process.env.CORS_ORIGINS)]),
+  ...new Set([...(process.env.NODE_ENV === "production" ? [] : defaultOrigins), ...configuredOrigins]),
 ];
 
 const isAllowedOrigin = (origin) => {
@@ -29,6 +30,9 @@ const isAllowedOrigin = (origin) => {
 
 const corsOptions = {
   origin(origin, callback) {
+    if (process.env.NODE_ENV === "production" && allowedOrigins.length === 0) {
+      return callback(new Error("CORS_ORIGINS or CLIENT_URL must be configured in production"));
+    }
     if (isAllowedOrigin(origin)) return callback(null, true);
     return callback(new Error(`CORS blocked origin: ${origin}`));
   },

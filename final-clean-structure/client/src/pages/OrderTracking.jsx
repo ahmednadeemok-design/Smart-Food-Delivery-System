@@ -6,6 +6,9 @@ import { toast } from "../utils/toast.js";
 import { addToCart } from "../store/cartStore.js";
 import SmartMap from "../components/map/SmartMap.jsx";
 import StatusBadge from "../components/common/StatusBadge.jsx";
+import ContactActions from "../components/common/ContactActions.jsx";
+import ActionModal from "../components/common/ActionModal.jsx";
+import PortalActionMenu from "../components/common/PortalActionMenu.jsx";
 
 const OTP_STATUSES = ["ready", "assigned", "picked"];
 
@@ -35,6 +38,9 @@ export default function OrderTracking() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [hideOrderConfirm, setHideOrderConfirm] = useState(null);
+  const [cancelOrderConfirm, setCancelOrderConfirm] = useState(null);
+  const [refundOrder, setRefundOrder] = useState(null);
+  const [refundReason, setRefundReason] = useState("Issue with delivered order");
 
   const loadOrders = () => {
     getMyOrders({ view, q: query, status, from, to, page, limit: 10 }).then((res) => {
@@ -93,23 +99,26 @@ export default function OrderTracking() {
     }
   };
 
-  const cancel = async (order) => {
-    if (!window.confirm("Cancel this order before preparation starts?")) return;
+  const cancel = async () => {
+    if (!cancelOrderConfirm) return;
     try {
-      await cancelOrder(order._id, "Customer cancelled from order tracking");
+      await cancelOrder(cancelOrderConfirm._id, "Customer cancelled from order tracking");
       toast.success("Order cancelled");
+      setCancelOrderConfirm(null);
       loadOrders();
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  const refund = async (order) => {
-    const reason = window.prompt("Refund reason", "Issue with delivered order");
-    if (!reason) return;
+  const refund = async () => {
+    if (!refundOrder) return;
+    if (!refundReason.trim()) return toast.error("Please add a short refund reason.");
     try {
-      await requestRefund(order._id, { reason, amount: order.totalAmount });
+      await requestRefund(refundOrder._id, { reason: refundReason.trim(), amount: refundOrder.totalAmount });
       toast.success("Refund request submitted for admin review");
+      setRefundOrder(null);
+      setRefundReason("Issue with delivered order");
       loadOrders();
     } catch (err) {
       toast.error(err.message);
@@ -173,6 +182,25 @@ export default function OrderTracking() {
                 <div className="detail-tile"><small>Delivery Address</small><b>{order.deliveryAddress || "Narowal delivery address"}</b></div>
                 <div className="detail-tile"><small>Payment</small><b>{String(order.paymentMethod || "cod").toUpperCase()} / {order.paymentStatus || "pending"}</b></div>
               </div>
+              <div className="contact-grid">
+                {order.contactPermissions?.customer?.restaurant && (
+                  <ContactActions
+                    title={order.restaurant?.name || "Restaurant"}
+                    subtitle="Kitchen support"
+                    phone={order.restaurant?.supportContact || order.restaurant?.phone}
+                    location={order.restaurant?.location}
+                    address={order.restaurant?.address}
+                  />
+                )}
+                {order.contactPermissions?.customer?.rider && (
+                  <ContactActions
+                    title={order.rider?.user?.name || "Assigned rider"}
+                    subtitle="Delivery rider"
+                    phone={order.rider?.user?.phone}
+                    location={order.rider?.currentLocation}
+                  />
+                )}
+              </div>
               <div className="tracking-metrics">
                 <span><b>{order.freshnessScore}%</b><small>Freshness</small></span>
                 <span><b>{order.estimatedDeliveryTime || 35} min</b><small>ETA</small></span>
@@ -207,20 +235,15 @@ export default function OrderTracking() {
               </div>
               <button className="btn outline" onClick={() => reorder(order)}>Reorder</button>
               {["pending", "accepted"].includes(order.status) && (
-                <button className="btn danger" onClick={() => cancel(order)} style={{ marginLeft: 8 }}>Cancel Order</button>
+                <button className="btn danger" onClick={() => setCancelOrderConfirm(order)} style={{ marginLeft: 8 }}>Cancel Order</button>
               )}
               <div className="summary-row"><span>Payment method</span><b>{String(order.paymentMethod || "cod").toUpperCase()}</b></div>
               <div className="summary-row"><span>Refund status</span><b>{order.refundStatus || "none"}</b></div>
               {order.status === "delivered" && ["none", undefined].includes(order.refundStatus) && (
-                <button className="btn outline" onClick={() => refund(order)} style={{ marginLeft: 8 }}>Request Refund</button>
+                <button className="btn outline" onClick={() => setRefundOrder(order)} style={{ marginLeft: 8 }}>Request Refund</button>
               )}
               {view === "history" && (
-                <details className="more-actions">
-                  <summary aria-label="More actions">⋮ More Actions</summary>
-                  <div className="more-actions-menu">
-                    <button className="danger-text" onClick={() => setHideOrderConfirm(order)}>Hide from History</button>
-                  </div>
-                </details>
+                <PortalActionMenu actions={[{ label: "Hide from History", danger: true, onClick: () => setHideOrderConfirm(order) }]} />
               )}
             </div>
           ))}
@@ -241,6 +264,29 @@ export default function OrderTracking() {
               </div>
             </div>
           </div>
+        )}
+        {cancelOrderConfirm && (
+          <ActionModal
+            title="Cancel this order?"
+            message={`Order #${cancelOrderConfirm._id.slice(-6).toUpperCase()} can only be cancelled before preparation starts.`}
+            danger
+            confirmLabel="Cancel Order"
+            onCancel={() => setCancelOrderConfirm(null)}
+            onConfirm={cancel}
+          />
+        )}
+        {refundOrder && (
+          <ActionModal
+            title="Request refund"
+            message={`Tell support what went wrong with order #${refundOrder._id.slice(-6).toUpperCase()}.`}
+            inputLabel="Refund reason"
+            inputPlaceholder="Example: Missing item or quality issue"
+            value={refundReason}
+            onValueChange={setRefundReason}
+            confirmLabel="Submit Request"
+            onCancel={() => setRefundOrder(null)}
+            onConfirm={refund}
+          />
         )}
       </div>
     </section>

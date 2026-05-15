@@ -43,6 +43,12 @@ router.patch("/complaints/:id", admin.updateComplaint);
 router.get("/payments", admin.listPayments);
 router.patch("/payments/:id/refund", admin.refundPayment);
 router.get("/finance/summary", admin.financialSummary);
+router.get("/finance/dashboard", admin.financeDashboard);
+router.get("/finance/transactions", admin.listFinanceTransactions);
+router.get("/finance/payout-requests", admin.listPayoutRequests);
+router.patch("/finance/payout-requests/:id", admin.updatePayoutRequest);
+router.get("/finance/cod-collections", admin.listCODCollections);
+router.patch("/finance/cod-collections/:id/reconcile", admin.reconcileCODCollection);
 
 router.post("/trust-scores", admin.adjustTrustScore);
 router.get("/trust-scores", admin.getTrustHistory);

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ClipboardList, History, LayoutDashboard, LogIn, LogOut, PackageCheck, Route, UserPlus } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogIn, LogOut, PackageCheck, Route, UserPlus, UserRound, WalletCards } from "lucide-react";
 import { useAuth } from "../../store/AuthContext.jsx";
 import socket, { connectSocket, disconnectSocket } from "../../services/socket.js";
 
@@ -37,7 +37,9 @@ export default function RiderLayout() {
                 <NavLink to="/available-orders"><ClipboardList className="nav-icon" />Orders</NavLink>
                 <NavLink to="/active-delivery"><PackageCheck className="nav-icon" />Active</NavLink>
                 <NavLink to="/history"><History className="nav-icon" />History</NavLink>
+                <NavLink to="/finance"><WalletCards className="nav-icon" />Finance</NavLink>
                 <NavLink to="/multi-order-route"><Route className="nav-icon" />Route</NavLink>
+                <NavLink to="/profile"><UserRound className="nav-icon" />Profile</NavLink>
                 <span className="badge role-badge"><span className="status-dot" />{user?.role || "rider"}</span>
                 <button className="btn outline" onClick={handleLogout}><LogOut className="nav-icon" />Logout</button>
               </>

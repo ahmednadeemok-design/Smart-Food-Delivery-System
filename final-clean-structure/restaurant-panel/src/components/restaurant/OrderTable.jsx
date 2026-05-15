@@ -1,5 +1,7 @@
 import formatCurrency from "../../utils/formatCurrency.js";
 import StatusBadge from "../common/StatusBadge.jsx";
+import ContactActions from "../common/ContactActions.jsx";
+import PortalActionMenu from "../common/PortalActionMenu.jsx";
 
 export default function OrderTable({ orders, onStatusChange, onHideOrder, mode = "active" }) {
   const nextActions = {
@@ -36,6 +38,20 @@ export default function OrderTable({ orders, onStatusChange, onHideOrder, mode =
             <div className="detail-tile"><small>Payment</small><StatusBadge value={order.paymentMethod} /></div>
             <div className="detail-tile"><small>Rider</small><b>{order.rider || "A rider will be assigned after ready."}</b></div>
           </div>
+          <div className="contact-grid">
+            {order.contactPermissions?.restaurant?.customer && (
+              <ContactActions
+                title={order.customer}
+                subtitle="Customer"
+                phone={order.phone}
+                location={order.deliveryLocation}
+                address={order.address}
+              />
+            )}
+            {order.contactPermissions?.restaurant?.rider && (
+              <ContactActions title={order.rider || "Assigned rider"} subtitle="Rider" phone={order.riderPhone} />
+            )}
+          </div>
           <div className="order-card-footer">
             <p className="muted">
               {mode !== "active" ? "This order is in history." : nextActions[order.status] ? "Next action is ready below." : "No restaurant action is needed right now."}
@@ -47,12 +63,7 @@ export default function OrderTable({ orders, onStatusChange, onHideOrder, mode =
                 </button>
               ))}
               {mode !== "active" && (
-                <details className="more-actions">
-                  <summary aria-label="More actions">⋮ More Actions</summary>
-                  <div className="more-actions-menu">
-                    <button className="danger-text" onClick={() => onHideOrder?.(order)}>Hide from History</button>
-                  </div>
-                </details>
+                <PortalActionMenu actions={[{ label: "Hide from History", danger: true, onClick: () => onHideOrder?.(order) }]} />
               )}
             </div>
           </div>
